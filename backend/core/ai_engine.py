@@ -1,0 +1,243 @@
+"""
+Backend AI Face Recognition Engine for Smart Attendance System
+Uses dlib-based face_recognition library (128-D ResNet Vector) for Face Identification.
+Reference project: C:/Users/shinj/face_recognition
+"""
+
+import os
+import cv2
+import numpy as np
+import face_recognition
+
+# Configurable matching threshold (dlib face_recognition distance threshold)
+# Default value 0.6 is the standard official face_recognition distance threshold
+MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.6"))
+
+
+def detect_all_faces(img_array):
+    """
+    Detects ALL face bounding boxes in an image using face_recognition (HOG model)
+    with Haar Cascade fallback for webcam/lighting flexibility.
+    Returns list of (x, y, w, h) tuples.
+    """
+    rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
+    locations = face_recognition.face_locations(rgb)
+    
+    bboxes = []
+    for (top, right, bottom, left) in locations:
+        x = left
+        y = top
+        w = right - left
+        h = bottom - top
+        bboxes.append((int(x), int(y), int(w), int(h)))
+        
+    # Fallback to OpenCV Haar Cascade if HOG misses low-resolution/webcam faces
+    if len(bboxes) == 0:
+        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        cascade = cv2.CascadeClassifier(cascade_path)
+        faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
+        bboxes = [tuple(map(int, f)) for f in faces]
+        
+    return bboxes
+
+
+def generate_image_encodings(img_array):
+    """
+    Detects faces and extracts 128-D dlib ResNet face encodings directly from full image.
+    Uses upsampled HOG detection for live webcam streams.
+    Returns list of (bbox_tuple, 128D_list) tuples.
+    """
+    rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
+    
+    # Try upsampled dlib HOG detection (upsample=1 detects webcam faces reliably)
+    locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=1)
+    
+    if len(locations) == 0:
+        # Fallback to standard HOG
+        locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=0)
+
+    if len(locations) == 0:
+        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        cascade = cv2.CascadeClassifier(cascade_path)
+        faces = cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=3, minSize=(30, 30))
+        locations = [(y, x + w, y + h, x) for (x, y, w, h) in faces]
+
+    if len(locations) == 0:
+        return []
+
+    encodings = face_recognition.face_encodings(rgb, known_face_locations=locations)
+    
+    results = []
+    for loc, enc in zip(locations, encodings):
+        top, right, bottom, left = loc
+        bbox = (int(left), int(top), int(right - left), int(bottom - top))
+        results.append((bbox, enc.astype(np.float32).tolist()))
+        
+    return results
+
+
+def crop_and_preprocess_face(img_array, bbox):
+    """
+    Crops face region with 10% outer padding expansion.
+    """
+    x, y, w, h = bbox
+    img_h, img_w = img_array.shape[:2]
+
+    pad_w = int(w * 0.1)
+    pad_h = int(h * 0.1)
+
+    left = max(0, x - pad_w)
+    top = max(0, y - pad_h)
+    right = min(img_w, x + w + pad_w)
+    bottom = min(img_h, y + h + pad_h)
+
+    crop = img_array[top:bottom, left:right]
+    if crop.size == 0:
+        crop = img_array[y:y+h, x:x+w]
+
+    rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+    return rgb
+
+
+def generate_embedding(face_rgb):
+    """
+    Runs dlib face_recognition 128-D model inference on face image.
+    Returns 128-D numpy float array as python list.
+    """
+    encodings = face_recognition.face_encodings(face_rgb)
+    if len(encodings) > 0:
+        return encodings[0].astype(np.float32).tolist()
+    
+    h, w = face_rgb.shape[:2]
+    if h > 0 and w > 0:
+        loc = [(0, w, h, 0)]
+        encodings = face_recognition.face_encodings(face_rgb, known_face_locations=loc)
+        if len(encodings) > 0:
+            return encodings[0].astype(np.float32).tolist()
+
+    return []
+
+
+def euclidean_distance(emb1, emb2):
+    """
+    Calculates L2 Euclidean distance between two 128-D face_recognition encodings.
+    """
+    a = np.array(emb1, dtype=np.float32)
+    b = np.array(emb2, dtype=np.float32)
+    return float(np.linalg.norm(a - b))
+
+
+def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRESHOLD):
+    """
+    Compares query_embedding against enrolled class students using face_recognition distance.
+    Returns (best_student_user, best_distance, confidence_score) or (None, actual_closest_distance, 0.0)
+    """
+    if not query_embedding:
+        return None, 999.0, 0.0
+
+    best_student = None
+    best_distance = float('inf')
+
+    for student in class_students:
+        if not student.face_embedding:
+            continue
+
+        dist = euclidean_distance(query_embedding, student.face_embedding)
+        if dist < best_distance:
+            best_distance = dist
+            best_student = student
+
+    if best_student and best_distance < threshold:
+        confidence = round(float(1.0 - (best_distance / threshold)), 4)
+        return best_student, round(best_distance, 4), max(0.0, confidence)
+
+    closest_dist = round(best_distance, 4) if best_distance != float('inf') else 999.0
+    return None, closest_dist, 0.0
+
+
+def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_THRESHOLD):
+    """
+    Processes multiple classroom photos using face_recognition library:
+    1. Detects faces in every photo.
+    2. Generates 128-D dlib vector embedding per face.
+    3. Matches against class students.
+    4. Deduplicates present students.
+    5. Returns draft attendance results.
+    """
+    present_student_ids = set()
+    match_details = []
+    total_faces_detected = 0
+    unmatched_faces_count = 0
+
+    for idx, photo_bytes in enumerate(photo_bytes_list):
+        nparr = np.frombuffer(photo_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        if img is None:
+            continue
+
+        face_data = generate_image_encodings(img)
+        total_faces_detected += len(face_data)
+
+        if len(face_data) == 0:
+            bboxes = detect_all_faces(img)
+            for bbox in bboxes:
+                crop = crop_and_preprocess_face(img, bbox)
+                emb = generate_embedding(crop)
+                if emb:
+                    face_data.append((bbox, emb))
+
+        for bbox, embedding in face_data:
+            matched_student, dist, conf = match_face_to_students(embedding, class_students, threshold=threshold)
+
+            if matched_student:
+                present_student_ids.add(matched_student.id)
+                match_details.append({
+                    'photo_index': idx + 1,
+                    'student_id': matched_student.id,
+                    'student_name': f"{matched_student.first_name} {matched_student.last_name}".strip() or matched_student.username,
+                    'roll_number': matched_student.roll_number,
+                    'distance': dist,
+                    'confidence': conf
+                })
+            else:
+                unmatched_faces_count += 1
+                match_details.append({
+                    'photo_index': idx + 1,
+                    'student_id': None,
+                    'student_name': "Unmatched Face",
+                    'roll_number': None,
+                    'distance': dist,
+                    'confidence': 0.0
+                })
+
+    # Class-scoped student breakdown
+    present_students = []
+    absent_students = []
+
+    for st in class_students:
+        name = f"{st.first_name} {st.last_name}".strip() or st.username
+        st_info = {
+            'id': st.id,
+            'username': st.username,
+            'name': name,
+            'roll_number': st.roll_number,
+            'has_registered_face': bool(st.face_embedding)
+        }
+        if st.id in present_student_ids:
+            present_students.append(st_info)
+        else:
+            absent_students.append(st_info)
+
+    return {
+        'total_photos_processed': len(photo_bytes_list),
+        'total_faces_detected': total_faces_detected,
+        'unmatched_faces_count': unmatched_faces_count,
+        'present_count': len(present_students),
+        'absent_count': len(absent_students),
+        'present_students': present_students,
+        'absent_students': absent_students,
+        'match_details': match_details
+    }

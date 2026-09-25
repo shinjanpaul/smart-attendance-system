@@ -1,0 +1,8 @@
+Django>=5.0,<5.2
+djangorestframework>=3.14.0
+django-cors-headers>=4.3.0
+psycopg2-binary>=2.9.9
+opencv-python>=4.9.0.80
+pillow>=10.2.0
+numpy>=1.26.4
+python-dotenv>=1.0.1
