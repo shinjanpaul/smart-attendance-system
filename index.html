@@ -426,7 +426,7 @@
     <div class="rounded-2xl bg-gradient-to-br from-indigo-900 to-primary p-5 text-white shadow-lg shadow-primary/25 space-y-3">
       <div class="flex justify-between items-center text-xs">
         <span class="px-2.5 py-1 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider">Attendance Status</span>
-        <span class="text-white/80 text-[11px]">Minimum Criteria: 75%</span>
+        <span class="text-white/80 text-[11px]" id="student-sync-timestamp">Minimum Criteria: 75%</span>
       </div>
       <div class="flex items-baseline justify-between">
         <div>
@@ -1856,6 +1856,7 @@
           renderStudentsList();
           renderFaceRegistry();
           await OfflineDB.setRoster('students', state.students);
+          try { localStorage.setItem('veriface_students', JSON.stringify(state.students)); } catch(e) {}
         }
 
         // 4. Fetch Attendance Logs (for dynamic sessions & classes conducted)
@@ -1864,6 +1865,10 @@
           if (attRes.ok) {
             state.attendanceLogs = await attRes.json();
             await OfflineDB.setRoster('attendanceLogs', state.attendanceLogs);
+            try { 
+              localStorage.setItem('veriface_logs', JSON.stringify(state.attendanceLogs));
+              localStorage.setItem('veriface_last_sync_time', new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+            } catch(e) {}
             if (state.currentUser && state.currentUserRole === 'teacher') {
               setupTeacherDashboard(state.currentUser);
             }
@@ -2333,12 +2338,32 @@
       const className = student.student_class_name || 'B.Tech IT 4th Yr - Sec A';
       const dept = student.department || 'Information Technology';
 
-      const stats = student.attendance_stats || {
+      let stats = student.attendance_stats || {
         total_days: 0,
         present_days: 0,
         absent_days: 0,
         percentage: 0.0
       };
+
+      // Dynamically compute exact stats from all recorded attendance logs in memory/cache
+      if (state.attendanceLogs && state.attendanceLogs.length > 0) {
+        const myLogs = state.attendanceLogs.filter(l => 
+          (l.student && l.student === student.id) || 
+          (l.student_name && l.student_name.toLowerCase() === (student.username || '').toLowerCase()) ||
+          (l.student_roll && student.roll_number && l.student_roll === student.roll_number)
+        );
+        if (myLogs.length > 0) {
+          const presents = myLogs.filter(l => l.status === 'PRESENT').length;
+          const totals = myLogs.length;
+          stats = {
+            total_days: totals,
+            present_days: presents,
+            absent_days: totals - presents,
+            percentage: (presents / totals) * 100,
+            by_subject: stats.by_subject || {}
+          };
+        }
+      }
 
       const pct = stats.percentage != null ? stats.percentage : 0.0;
       const isGoodStanding = pct >= 75.0;
@@ -2392,6 +2417,11 @@
       if (sBar) {
         sBar.style.width = `${pct}%`;
         sBar.className = isGoodStanding ? 'bg-emerald-400 h-full rounded-full transition-all duration-500' : 'bg-amber-400 h-full rounded-full transition-all duration-500';
+      }
+      const sSync = document.getElementById('student-sync-timestamp');
+      const lastSync = localStorage.getItem('veriface_last_sync_time');
+      if (sSync && lastSync) {
+        sSync.textContent = `Live Synced: ${lastSync}`;
       }
       if (sPill) {
         if (isGoodStanding) {
@@ -3452,7 +3482,21 @@
     }
 
     async function initApp() {
-      // 0. Instant Initial Render from pre-seeded memory defaults
+      // 0. Restore last known live attendance snapshot from phone localStorage
+      try {
+        const localS = localStorage.getItem('veriface_students');
+        const localL = localStorage.getItem('veriface_logs');
+        if (localS) {
+          const parsedS = JSON.parse(localS);
+          if (parsedS && parsedS.length) state.students = parsedS;
+        }
+        if (localL) {
+          const parsedL = JSON.parse(localL);
+          if (parsedL && parsedL.length) state.attendanceLogs = parsedL;
+        }
+      } catch(e) {}
+
+      // Instant Initial Render from cached / pre-seeded memory defaults
       renderTeachersList();
       renderStudentFacultyPicker();
       renderStudentsList();
@@ -3460,6 +3504,29 @@
 
       // 1. Initialize IndexedDB Offline Buffer
       await OfflineDB.init();
+
+      // Check for updated cloud attendance snapshot from GitHub Pages
+      try {
+        const snapRes = await fetch('attendance_data.json', { cache: 'no-store' });
+        if (snapRes.ok) {
+          const snapData = await snapRes.json();
+          if (snapData.students && snapData.students.length) {
+            state.students = snapData.students;
+            renderStudentsList();
+            renderFaceRegistry();
+          }
+          if (snapData.attendance_logs && snapData.attendance_logs.length) {
+            state.attendanceLogs = snapData.attendance_logs;
+          }
+          if (snapData.last_updated) {
+            localStorage.setItem('veriface_last_sync_time', snapData.last_updated);
+            const sSync = document.getElementById('student-sync-timestamp');
+            if (sSync) sSync.textContent = `Live Synced: ${snapData.last_updated}`;
+          }
+        }
+      } catch (e) {
+        console.warn('Cloud snapshot fetch notice:', e);
+      }
 
       // 2. Setup network event listeners
       window.addEventListener('online', () => updateNetworkStatus(true));
