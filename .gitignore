@@ -17,7 +17,6 @@ env/
 # Django
 *.log
 db.sqlite3
-media/
 staticfiles/
 
 # Node

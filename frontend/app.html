@@ -3,6 +3,9 @@
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
   <title>VeriFace AI • Smart Attendance Application</title>
   
   <!-- Fonts & Material Symbols -->
@@ -920,6 +923,18 @@
 
     function getMediaUrl(path) {
       if (!path) return '';
+      // On GitHub Pages, serve student face photos directly from repository static folder 24/7 (offline ready!)
+      if (isGitHub) {
+        let clean = path;
+        if (clean.startsWith('http://') || clean.startsWith('https://')) {
+          try {
+            clean = new URL(clean).pathname;
+          } catch(e) {}
+        }
+        clean = clean.replace(/^\/+/, '');
+        if (!clean.startsWith('media/')) clean = 'media/' + clean;
+        return './' + clean;
+      }
       if (path.startsWith('http://') || path.startsWith('https://')) {
         try {
           const u = new URL(path);
@@ -1344,6 +1359,23 @@
             confidence_score: isAbs ? 0.0 : 0.96
           });
         });
+
+        // 19th Session: IT802 Machine Learning & Pattern Recognition (Prof. Rituparna Sinha)
+        const isPresIT802 = ukey.includes('ayush');
+        logs.push({
+          id: logId++,
+          student: s.id,
+          student_name: s.username,
+          student_full_name: `${s.first_name} ${s.last_name}`,
+          student_roll: s.roll_number,
+          date: '2026-10-26',
+          subject: 2,
+          subject_code: 'IT802',
+          subject_name: 'Machine Learning & Pattern Recognition',
+          status: isPresIT802 ? 'PRESENT' : 'ABSENT',
+          verification_method: 'FACE_RECOGNITION',
+          confidence_score: isPresIT802 ? 0.94 : 0.0
+        });
       });
       logs.sort((a, b) => b.date.localeCompare(a.date));
       return logs;
@@ -1358,16 +1390,17 @@
         roll_number: 'IT202601',
         department: 'Information Technology',
         student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: '/media/profiles/ShinjanPaul.jpeg',
         has_registered_face: true,
         attendance_stats: {
-          total_days: 18,
+          total_days: 19,
           present_days: 16,
-          absent_days: 2,
-          percentage: 88.9,
+          absent_days: 3,
+          percentage: 84.2,
           by_subject: {
             'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 9, percentage: 90.0, profName: 'Prof. Sudipta Bhadra' },
             'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 7, percentage: 87.5, profName: 'Prof. Ananya Mukherjee' },
-            'IT802': { code: 'IT802', name: 'Software Engineering & AI Systems', total: 0, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
           }
         }
       },
@@ -1379,16 +1412,17 @@
         roll_number: 'IT2354016',
         department: 'Information Technology',
         student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: null,
         has_registered_face: true,
         attendance_stats: {
-          total_days: 18,
+          total_days: 19,
           present_days: 15,
-          absent_days: 3,
-          percentage: 83.3,
+          absent_days: 4,
+          percentage: 78.9,
           by_subject: {
             'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 8, percentage: 80.0, profName: 'Prof. Sudipta Bhadra' },
             'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 7, percentage: 87.5, profName: 'Prof. Ananya Mukherjee' },
-            'IT802': { code: 'IT802', name: 'Software Engineering & AI Systems', total: 0, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
           }
         }
       },
@@ -1400,16 +1434,17 @@
         roll_number: 'IT202604',
         department: 'Information Technology',
         student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: '/media/profiles/Ayush.jpeg',
         has_registered_face: true,
         attendance_stats: {
-          total_days: 18,
-          present_days: 16,
+          total_days: 19,
+          present_days: 17,
           absent_days: 2,
-          percentage: 88.9,
+          percentage: 89.5,
           by_subject: {
             'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 9, percentage: 90.0, profName: 'Prof. Sudipta Bhadra' },
             'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 7, percentage: 87.5, profName: 'Prof. Ananya Mukherjee' },
-            'IT802': { code: 'IT802', name: 'Software Engineering & AI Systems', total: 0, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 1, percentage: 100.0, profName: 'Prof. Rituparna Sinha' }
           }
         }
       },
@@ -1421,16 +1456,17 @@
         roll_number: 'IT202603',
         department: 'Information Technology',
         student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: null,
         has_registered_face: true,
         attendance_stats: {
-          total_days: 18,
+          total_days: 19,
           present_days: 15,
-          absent_days: 3,
-          percentage: 83.3,
+          absent_days: 4,
+          percentage: 78.9,
           by_subject: {
             'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 8, percentage: 80.0, profName: 'Prof. Sudipta Bhadra' },
             'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 7, percentage: 87.5, profName: 'Prof. Ananya Mukherjee' },
-            'IT802': { code: 'IT802', name: 'Software Engineering & AI Systems', total: 0, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
           }
         }
       },
@@ -1442,16 +1478,17 @@
         roll_number: 'IT202602',
         department: 'Information Technology',
         student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: '/media/profiles/4.jpeg',
         has_registered_face: true,
         attendance_stats: {
-          total_days: 18,
+          total_days: 19,
           present_days: 13,
-          absent_days: 5,
-          percentage: 72.2,
+          absent_days: 6,
+          percentage: 68.4,
           by_subject: {
             'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 7, percentage: 70.0, profName: 'Prof. Sudipta Bhadra' },
             'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 6, percentage: 75.0, profName: 'Prof. Ananya Mukherjee' },
-            'IT802': { code: 'IT802', name: 'Software Engineering & AI Systems', total: 0, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
           }
         }
       }
@@ -1783,8 +1820,8 @@
         period: 'Period 03 (11:30 AM - 12:30 PM)',
         enrolledCount: 5,
         bioIndexed: '5/5 (100%)',
-        avgAttend: '0.0%',
-        classesTaken: 0,
+        avgAttend: '80.0%',
+        classesTaken: 1,
         badge: 'B.Tech IT • 4th Yr • IT802',
         heroDesc: 'Multi-face capture for IT802 Machine Learning lecture.'
       },
@@ -2386,6 +2423,10 @@
 
       const avatarUrl = getMediaUrl(student.profile_picture);
       if (avatarUrl && sImg) {
+        sImg.onerror = () => {
+          sImg.classList.add('hidden');
+          if (sInit) sInit.classList.remove('hidden');
+        };
         sImg.src = avatarUrl;
         sImg.classList.remove('hidden');
         if (sInit) sInit.classList.add('hidden');
@@ -2398,6 +2439,10 @@
       }
 
       if (avatarUrl && topImg) {
+        topImg.onerror = () => {
+          topImg.classList.add('hidden');
+          if (topInit) topInit.classList.remove('hidden');
+        };
         topImg.src = avatarUrl;
         topImg.classList.remove('hidden');
         if (topInit) topInit.classList.add('hidden');
@@ -3482,58 +3527,10 @@
     }
 
     async function initApp() {
-      // 0. Restore last known live attendance snapshot from phone localStorage
-      try {
-        const localS = localStorage.getItem('veriface_students');
-        const localL = localStorage.getItem('veriface_logs');
-        if (localS) {
-          const parsedS = JSON.parse(localS);
-          if (parsedS && parsedS.length) state.students = parsedS;
-        }
-        if (localL) {
-          const parsedL = JSON.parse(localL);
-          if (parsedL && parsedL.length) state.attendanceLogs = parsedL;
-        }
-      } catch(e) {}
-
-      // Instant Initial Render from cached / pre-seeded memory defaults
-      renderTeachersList();
-      renderStudentFacultyPicker();
-      renderStudentsList();
-      renderFaceRegistry();
-
-      // 1. Initialize IndexedDB Offline Buffer
+      // 0. Initialize IndexedDB Offline Buffer
       await OfflineDB.init();
 
-      // Check for updated cloud attendance snapshot from GitHub Pages
-      try {
-        const snapRes = await fetch('attendance_data.json', { cache: 'no-store' });
-        if (snapRes.ok) {
-          const snapData = await snapRes.json();
-          if (snapData.students && snapData.students.length) {
-            state.students = snapData.students;
-            renderStudentsList();
-            renderFaceRegistry();
-          }
-          if (snapData.attendance_logs && snapData.attendance_logs.length) {
-            state.attendanceLogs = snapData.attendance_logs;
-          }
-          if (snapData.last_updated) {
-            localStorage.setItem('veriface_last_sync_time', snapData.last_updated);
-            const sSync = document.getElementById('student-sync-timestamp');
-            if (sSync) sSync.textContent = `Live Synced: ${snapData.last_updated}`;
-          }
-        }
-      } catch (e) {
-        console.warn('Cloud snapshot fetch notice:', e);
-      }
-
-      // 2. Setup network event listeners
-      window.addEventListener('online', () => updateNetworkStatus(true));
-      window.addEventListener('offline', () => updateNetworkStatus(false));
-      updateNetworkStatus(navigator.onLine);
-
-      // 3. Stale-While-Revalidate: Instant render from IndexedDB cache
+      // 1. Instant 0ms Load: Load cached roster from IndexedDB & localStorage FIRST
       try {
         const [cachedT, cachedS, cachedC, cachedL] = await Promise.all([
           OfflineDB.getRoster('teachers'),
@@ -3541,27 +3538,81 @@
           OfflineDB.getRoster('classes'),
           OfflineDB.getRoster('attendanceLogs')
         ]);
-        if (cachedT && cachedT.length) {
-          state.teachers = cachedT;
-          renderTeachersList();
-          renderStudentFacultyPicker();
+        if (cachedT && cachedT.length) state.teachers = cachedT;
+        if (cachedS && cachedS.length) state.students = cachedS;
+        if (cachedC && cachedC.length) state.classes = cachedC;
+        if (cachedL && cachedL.length) state.attendanceLogs = cachedL;
+
+        const localS = localStorage.getItem('veriface_students');
+        const localL = localStorage.getItem('veriface_logs');
+        if ((!state.students || !state.students.length) && localS) {
+          const parsed = JSON.parse(localS);
+          if (parsed && parsed.length) state.students = parsed;
         }
-        if (cachedS && cachedS.length) {
-          state.students = cachedS;
-          renderStudentsList();
-          renderFaceRegistry();
-        }
-        if (cachedC && cachedC.length) {
-          state.classes = cachedC;
-        }
-        if (cachedL && cachedL.length) {
-          state.attendanceLogs = cachedL;
+        if ((!state.attendanceLogs || !state.attendanceLogs.length) && localL) {
+          const parsed = JSON.parse(localL);
+          if (parsed && parsed.length) state.attendanceLogs = parsed;
         }
       } catch(e) {
-        console.warn('IndexedDB cache load notice:', e);
+        console.warn('Initial cache load notice:', e);
       }
 
-      // 4. Recover active review draft if present
+      // Initial Render from cached / baseline data
+      renderTeachersList();
+      renderStudentFacultyPicker();
+      renderStudentsList();
+      renderFaceRegistry();
+
+      // Setup network event listeners
+      window.addEventListener('online', () => updateNetworkStatus(true));
+      window.addEventListener('offline', () => updateNetworkStatus(false));
+      updateNetworkStatus(navigator.onLine);
+
+      // 2. Fetch authoritative cloud attendance snapshot from GitHub Pages (cache-busted with timestamp)
+      try {
+        const snapRes = await fetch('attendance_data.json?v=' + Date.now(), { cache: 'no-store' });
+        if (snapRes.ok) {
+          const snapData = await snapRes.json();
+          if (snapData.students && snapData.students.length) {
+            state.students = snapData.students;
+            // Persist fresh cloud snapshot to IndexedDB and localStorage so subsequent visits stay updated!
+            await OfflineDB.setRoster('students', snapData.students);
+            try { localStorage.setItem('veriface_students', JSON.stringify(snapData.students)); } catch(e) {}
+          }
+          if (snapData.attendance_logs && snapData.attendance_logs.length) {
+            state.attendanceLogs = snapData.attendance_logs;
+            await OfflineDB.setRoster('attendanceLogs', snapData.attendance_logs);
+            try { localStorage.setItem('veriface_logs', JSON.stringify(snapData.attendance_logs)); } catch(e) {}
+          }
+          if (snapData.last_updated) {
+            localStorage.setItem('veriface_last_sync_time', snapData.last_updated);
+            const sSync = document.getElementById('student-sync-timestamp');
+            if (sSync) sSync.textContent = `Live Synced: ${snapData.last_updated}`;
+          }
+
+          // Re-render UI with fresh snapshot data
+          renderStudentsList();
+          renderFaceRegistry();
+
+          // If a student is currently active / viewing dashboard, refresh their dashboard immediately!
+          if (state.selectedStudent) {
+            const updated = state.students.find(s => 
+              s.id === state.selectedStudent.id || 
+              s.username.toLowerCase() === state.selectedStudent.username.toLowerCase()
+            );
+            if (updated) {
+              state.selectedStudent = updated;
+              if (state.currentUserRole === 'student') {
+                setupStudentDashboard(updated, state.selectedStudentFaculty);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Cloud snapshot fetch notice:', e);
+      }
+
+      // 3. Recover active review draft if present
       try {
         const savedDraft = await OfflineDB.getActiveDraft();
         if (savedDraft) {
@@ -3574,16 +3625,16 @@
         console.warn('Draft recovery notice:', e);
       }
 
-      // 5. Check offline queue status
+      // 4. Check offline queue status
       await checkOfflineQueueStatus();
 
-      // 6. Fetch fresh data from live backend
+      // 5. If live backend is reachable, fetch live data
       await loadBackendData();
 
-      // 7. Initialize Real-Time WebSocket for scanning progress and live attendance alerts
+      // 6. Initialize Real-Time WebSocket for scanning progress and live attendance alerts
       initWebSocket();
 
-      // 8. Auto-route to Student Portal if requested via URL param or Hash
+      // 7. Auto-route to Student Portal if requested via URL param or Hash
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const reqRole = urlParams.get('role');

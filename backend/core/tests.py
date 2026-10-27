@@ -155,3 +155,56 @@ class AttendanceAPITestCase(TestCase):
         res2 = self.client.post('/api/attendance/confirm/', payload, format='json')
         self.assertEqual(res2.status_code, status.HTTP_200_OK)
         self.assertEqual(AttendanceLog.objects.count(), 2) # Count remains 2 due to update_or_create
+
+
+from channels.testing import WebsocketCommunicator
+from core.consumers import AttendanceConsumer
+from channels.layers import get_channel_layer
+
+class AttendanceWebSocketTestCase(TestCase):
+    async def test_16_websocket_connection_and_scan_progress_broadcast(self):
+        communicator = WebsocketCommunicator(AttendanceConsumer.as_asgi(), "/ws/attendance/")
+        connected, _ = await communicator.connect()
+        self.assertTrue(connected)
+
+        # 1. Connection established message received
+        init_msg = await communicator.receive_json_from()
+        self.assertEqual(init_msg['type'], 'connection_established')
+
+        # 2. Simulate broadcast to attendance_updates group
+        channel_layer = get_channel_layer()
+        await channel_layer.group_send(
+            'attendance_updates',
+            {
+                'type': 'scan_progress',
+                'current': 2,
+                'total': 4,
+                'percentage': 50,
+                'faces_detected': 3,
+                'message': 'Scanning Photo 2/4 (50%) — 3 faces detected'
+            }
+        )
+        progress_msg = await communicator.receive_json_from()
+        self.assertEqual(progress_msg['type'], 'scan_progress')
+        self.assertEqual(progress_msg['current'], 2)
+        self.assertEqual(progress_msg['percentage'], 50)
+
+        # 3. Simulate attendance confirmed broadcast
+        await channel_layer.group_send(
+            'attendance_updates',
+            {
+                'type': 'attendance_confirmed',
+                'class_id': 1,
+                'subject_name': 'Data Structures',
+                'subject_code': 'CS301',
+                'teacher_name': 'Prof. Test',
+                'date': '2026-10-19',
+                'records': [{'student_id': 10, 'status': 'PRESENT', 'confidence': 0.98}]
+            }
+        )
+        conf_msg = await communicator.receive_json_from()
+        self.assertEqual(conf_msg['type'], 'attendance_confirmed')
+        self.assertEqual(conf_msg['subject_name'], 'Data Structures')
+
+        await communicator.disconnect()
+

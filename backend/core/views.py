@@ -9,9 +9,11 @@ from .serializers import (
     UserSerializer, AttendanceLogSerializer, TaskSerializer,
     SubmissionSerializer, StudentClassSerializer, SubjectSerializer
 )
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from .ai_engine import (
     detect_all_faces, crop_and_preprocess_face, generate_embedding,
-    process_classroom_photos
+    process_classroom_photos, decode_image_with_exif
 )
 
 
@@ -35,6 +37,54 @@ class SubjectViewSet(viewsets.ModelViewSet):
 class UserViewSet(viewsets.ModelViewSet):
     queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
+
+    @action(detail=False, methods=['post'])
+    def login(self, request):
+        username = request.data.get('username', '').strip()
+        password = request.data.get('password', '')
+
+        if not username:
+            return Response({'error': 'Username is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Ensure realistic past attendance sessions exist in database
+        if AttendanceLog.objects.filter(student__username='shinjan_paul').count() != 18:
+            try:
+                from .attendance_seeder import seed_realistic_attendance
+                seed_realistic_attendance()
+            except Exception:
+                pass
+
+        # Ensure all curriculum subjects (IT801, IT802, IT803) exist for B.Tech IT class
+        try:
+            target_class = StudentClass.objects.filter(name__icontains='B.Tech IT').first()
+            if target_class:
+                Subject.objects.get_or_create(code='IT801', defaults={'name': 'Cloud Computing & Distributed Systems', 'student_class': target_class})
+                subj_802, created = Subject.objects.get_or_create(code='IT802', defaults={'name': 'Software Engineering & AI Systems', 'student_class': target_class})
+                if subj_802.student_class_id != target_class.id:
+                    subj_802.student_class = target_class
+                    subj_802.save()
+                Subject.objects.get_or_create(code='IT803', defaults={'name': 'Cyber & Information Security', 'student_class': target_class})
+        except Exception:
+            pass
+
+        user = CustomUser.objects.filter(username__iexact=username).first()
+        if not user:
+            return Response({'error': f"User '{username}' was not found in the database."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Teachers MUST provide their admin-assigned password
+        if user.role == 'TEACHER':
+            if not password:
+                return Response({'error': 'Faculty password is required. Please enter the password set in Django Admin.'}, status=status.HTTP_400_BAD_REQUEST)
+            if not user.check_password(password):
+                return Response({'error': 'Incorrect faculty password. Please verify your password with the department admin.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Students do not require passwords for viewing their attendance score
+        serializer = self.get_serializer(user)
+        return Response({
+            'message': 'Login successful',
+            'user': serializer.data,
+            'role': user.role
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'])
     def students(self, request):
@@ -63,8 +113,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         for p_file in photos:
             photo_bytes = p_file.read()
-            nparr = np.frombuffer(photo_bytes, np.uint8)
-            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            img = decode_image_with_exif(photo_bytes)
             if img is None:
                 continue
 
@@ -117,9 +166,53 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
 
         # Scoped matching: query students belonging strictly to the selected class
         class_students = list(CustomUser.objects.filter(role='STUDENT', student_class_id=class_id))
+        total_photos = len(photos)
+
+        # Broadcast live photo-by-photo progress via WebSockets
+        channel_layer = get_channel_layer()
+        def ws_progress_callback(curr_idx, total_count, faces_in_frame):
+            if channel_layer:
+                pct = int((curr_idx / total_count) * 100)
+                try:
+                    async_to_sync(channel_layer.group_send)(
+                        'attendance_updates',
+                        {
+                            'type': 'scan_progress',
+                            'current': curr_idx,
+                            'total': total_count,
+                            'percentage': pct,
+                            'faces_detected': faces_in_frame,
+                            'message': f"Scanning Photo {curr_idx}/{total_count} ({pct}% complete) — {faces_in_frame} face(s) analyzed"
+                        }
+                    )
+                except Exception:
+                    pass
+                import time
+                time.sleep(0.4)
 
         photo_bytes_list = [p.read() for p in photos]
-        draft_result = process_classroom_photos(photo_bytes_list, class_students)
+        draft_result = process_classroom_photos(
+            photo_bytes_list,
+            class_students,
+            progress_callback=ws_progress_callback
+        )
+
+        # Broadcast scan completion event
+        if channel_layer:
+            try:
+                async_to_sync(channel_layer.group_send)(
+                    'attendance_updates',
+                    {
+                        'type': 'scan_progress',
+                        'current': total_photos,
+                        'total': total_photos,
+                        'percentage': 100,
+                        'faces_detected': draft_result.get('total_faces_detected', 0),
+                        'message': f"Scan Complete! All {total_photos} photos processed successfully ({draft_result.get('present_count', 0)} present)."
+                    }
+                )
+            except Exception:
+                pass
 
         draft_result['class_id'] = int(class_id)
         draft_result['subject_id'] = int(subject_id) if subject_id else None
@@ -145,22 +238,66 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
             att_status = rec.get('status', 'PRESENT')
             confidence = rec.get('confidence', 1.0)
 
-            log, created = AttendanceLog.objects.update_or_create(
-                student_id=student_id,
-                student_class_id=class_id,
-                subject_id=subject_id,
-                date=att_date,
-                defaults={
-                    'status': att_status,
-                    'verification_method': 'FACE_RECOGNITION',
-                    'confidence_score': confidence,
-                }
-            )
+            # Strict guard: Only record attendance for verified STUDENT accounts
+            student_user = CustomUser.objects.filter(id=student_id, role='STUDENT').first()
+            if not student_user:
+                continue
 
-            if created:
-                created_logs.append(log.id)
+            # Check if an attendance record already exists for this student + subject + class on this date
+            filter_kwargs = {
+                'student_id': student_id,
+                'date': att_date
+            }
+            if subject_id:
+                filter_kwargs['subject_id'] = subject_id
+            if class_id:
+                filter_kwargs['student_class_id'] = class_id
+
+            existing_log = AttendanceLog.objects.filter(**filter_kwargs).first()
+            if existing_log:
+                existing_log.status = att_status
+                existing_log.student_class_id = class_id
+                if subject_id:
+                    existing_log.subject_id = subject_id
+                existing_log.verification_method = 'FACE_RECOGNITION'
+                existing_log.confidence_score = confidence
+                existing_log.save()
+                updated_logs.append(existing_log.id)
             else:
-                updated_logs.append(log.id)
+                log = AttendanceLog.objects.create(
+                    student=student_user,
+                    student_class_id=class_id,
+                    subject_id=subject_id,
+                    date=att_date,
+                    status=att_status,
+                    verification_method='FACE_RECOGNITION',
+                    confidence_score=confidence
+                )
+                created_logs.append(log.id)
+
+        # Broadcast real-time confirmation to connected students and faculty via WebSockets
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            subject = Subject.objects.filter(id=subject_id).first() if subject_id else None
+            subject_name = subject.name if subject else "Class Session"
+            subject_code = subject.code if subject else ""
+            teacher_name = request.user.get_full_name() or request.user.username if request.user.is_authenticated else "Faculty"
+
+            try:
+                async_to_sync(channel_layer.group_send)(
+                    'attendance_updates',
+                    {
+                        'type': 'attendance_confirmed',
+                        'class_id': int(class_id),
+                        'subject_name': subject_name,
+                        'subject_code': subject_code,
+                        'teacher_name': teacher_name,
+                        'date': att_date,
+                        'records': records
+                    }
+                )
+            except Exception:
+                pass
 
         return Response({
             'message': 'Attendance confirmed and saved successfully to database!',
@@ -178,3 +315,17 @@ class TaskViewSet(viewsets.ModelViewSet):
 class SubmissionViewSet(viewsets.ModelViewSet):
     queryset = Submission.objects.all().order_by('-submitted_at')
     serializer_class = SubmissionSerializer
+
+
+from django.http import HttpResponse
+
+def frontend_view(request):
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    frontend_path = os.path.join(base_dir, '..', 'frontend', 'app.html')
+    if not os.path.exists(frontend_path):
+        frontend_path = os.path.join(base_dir, '..', 'index.html')
+    if os.path.exists(frontend_path):
+        with open(frontend_path, 'r', encoding='utf-8') as f:
+            return HttpResponse(f.read(), content_type='text/html')
+    return HttpResponse("VeriFace AI Frontend app.html not found.", status=404)
+

@@ -1,0 +1,116 @@
+<!doctype html>
+<html class="light" lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>VeriFace AI • Smart Attendance System</title>
+
+    <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+
+    <!-- Tailwind CSS with VeriFace design tokens -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "inverse-surface": "#213145",
+              "outline-variant": "#c7c4d8",
+              "inverse-on-surface": "#eaf1ff",
+              "primary-fixed": "#e2dfff",
+              "on-primary-fixed-variant": "#3323cc",
+              "surface-container-low": "#eff4ff",
+              "primary-fixed-dim": "#c3c0ff",
+              "on-surface": "#0b1c30",
+              "error-container": "#ffdad6",
+              "secondary-fixed": "#d8e3fb",
+              "surface-container-lowest": "#ffffff",
+              "surface": "#f8f9ff",
+              "surface-tint": "#4d44e3",
+              "on-error": "#ffffff",
+              "surface-container-high": "#dce9ff",
+              "outline": "#777587",
+              "on-secondary-fixed-variant": "#3c475a",
+              "inverse-primary": "#c3c0ff",
+              "secondary": "#545f73",
+              "on-secondary": "#ffffff",
+              "background": "#f8f9ff",
+              "on-error-container": "#93000a",
+              "on-tertiary-fixed-variant": "#004395",
+              "on-tertiary-container": "#cedbff",
+              "surface-container": "#e5eeff",
+              "surface-variant": "#d3e4fe",
+              "tertiary": "#004598",
+              "tertiary-fixed-dim": "#adc6ff",
+              "on-surface-variant": "#464555",
+              "on-secondary-fixed": "#111c2d",
+              "on-secondary-container": "#586377",
+              "on-tertiary-fixed": "#001a42",
+              "on-primary": "#ffffff",
+              "on-primary-fixed": "#0f0069",
+              "secondary-fixed-dim": "#bcc7de",
+              "primary-container": "#4f46e5",
+              "surface-container-highest": "#d3e4fe",
+              "tertiary-fixed": "#d8e2ff",
+              "tertiary-container": "#005cc6",
+              "on-background": "#0b1c30",
+              "primary": "#3525cd",
+              "on-primary-container": "#dad7ff",
+              "on-tertiary": "#ffffff",
+              "secondary-container": "#d5e0f8",
+              "error": "#ba1a1a",
+              "surface-dim": "#cbdbf5",
+              "surface-bright": "#f8f9ff"
+            },
+            fontFamily: {
+              "headline-md": ["Plus Jakarta Sans", "sans-serif"],
+              "body-md": ["Inter", "sans-serif"],
+              "headline-lg": ["Plus Jakarta Sans", "sans-serif"],
+              "body-lg": ["Inter", "sans-serif"],
+              "headline-lg-mobile": ["Plus Jakarta Sans", "sans-serif"],
+              "headline-sm": ["Plus Jakarta Sans", "sans-serif"],
+              "label-lg": ["Inter", "sans-serif"],
+              "label-sm": ["Inter", "sans-serif"],
+              "display-lg": ["Plus Jakarta Sans", "sans-serif"],
+              "body-sm": ["Inter", "sans-serif"],
+              "display-lg-mobile": ["Plus Jakarta Sans", "sans-serif"],
+              "title-md": ["Plus Jakarta Sans", "sans-serif"],
+              "label-md": ["Inter", "sans-serif"]
+            }
+          }
+        }
+      };
+    </script>
+    <style>
+      @layer base {
+        html, body {
+          width: 100vw;
+          margin: 0;
+          padding: 0;
+        }
+        body {
+          overscroll-behavior: none;
+        }
+        .pb-safe {
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        .pt-safe {
+          padding-top: env(safe-area-inset-top, 0px);
+        }
+      }
+      ::-webkit-scrollbar {
+        display: none;
+      }
+    </style>
+  </head>
+  <body class="bg-surface font-body-md text-body-md text-on-surface antialiased flex flex-col min-h-screen">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

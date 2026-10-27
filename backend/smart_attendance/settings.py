@@ -13,6 +13,7 @@ ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -23,6 +24,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'corsheaders',
+    'channels',
 
     # Local apps
     'core',
@@ -58,6 +60,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'smart_attendance.wsgi.application'
+ASGI_APPLICATION = 'smart_attendance.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -101,20 +110,8 @@ if os.getenv('USE_SQLITE', 'False').lower() in ('true', '1', 't'):
 
 AUTH_USER_MODEL = 'core.CustomUser'
 
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
+# Password validation - relaxed for development so you can set any custom password of your choice
+AUTH_PASSWORD_VALIDATORS = []
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -142,3 +139,12 @@ REST_FRAMEWORK = {
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
+
+# CSRF Trusted Origins for public tunnels and mobile access
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.ngrok-free.dev',
+    'https://*.ngrok-free.app',
+    'https://*.trycloudflare.com',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]

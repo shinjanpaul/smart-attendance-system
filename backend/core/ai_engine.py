@@ -14,14 +14,42 @@ import face_recognition
 MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.6"))
 
 
+import io
+from PIL import Image, ImageOps
+
+def decode_image_with_exif(photo_bytes, max_dim=1600):
+    """
+    Decodes image bytes, auto-corrects mobile phone EXIF camera orientation,
+    and downscales if greater than max_dim for fast, accurate dlib HOG inference.
+    Returns BGR numpy image array.
+    """
+    try:
+        pil_img = Image.open(io.BytesIO(photo_bytes))
+        pil_img = ImageOps.exif_transpose(pil_img)
+        w, h = pil_img.size
+        if max(w, h) > max_dim:
+            scale = max_dim / float(max(w, h))
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            pil_img = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+        
+        rgb = np.array(pil_img.convert('RGB'))
+        bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        return bgr
+    except Exception:
+        nparr = np.frombuffer(photo_bytes, np.uint8)
+        return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+
 def detect_all_faces(img_array):
     """
-    Detects ALL face bounding boxes in an image using face_recognition (HOG model)
-    with Haar Cascade fallback for webcam/lighting flexibility.
+    Detects ALL face bounding boxes in an image using face_recognition (HOG model).
     Returns list of (x, y, w, h) tuples.
     """
     rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
-    locations = face_recognition.face_locations(rgb)
+    locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=1)
+    if len(locations) == 0:
+        locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=0)
     
     bboxes = []
     for (top, right, bottom, left) in locations:
@@ -31,38 +59,23 @@ def detect_all_faces(img_array):
         h = bottom - top
         bboxes.append((int(x), int(y), int(w), int(h)))
         
-    # Fallback to OpenCV Haar Cascade if HOG misses low-resolution/webcam faces
-    if len(bboxes) == 0:
-        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        cascade = cv2.CascadeClassifier(cascade_path)
-        faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
-        bboxes = [tuple(map(int, f)) for f in faces]
-        
     return bboxes
 
 
 def generate_image_encodings(img_array):
     """
     Detects faces and extracts 128-D dlib ResNet face encodings directly from full image.
-    Uses upsampled HOG detection for live webcam streams.
+    Uses upsampled HOG detection for live mobile and webcam streams.
     Returns list of (bbox_tuple, 128D_list) tuples.
     """
     rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
     
-    # Try upsampled dlib HOG detection (upsample=1 detects webcam faces reliably)
+    # Try upsampled dlib HOG detection (upsample=1 detects faces reliably)
     locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=1)
     
     if len(locations) == 0:
         # Fallback to standard HOG
         locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=0)
-
-    if len(locations) == 0:
-        gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        cascade = cv2.CascadeClassifier(cascade_path)
-        faces = cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=3, minSize=(30, 30))
-        locations = [(y, x + w, y + h, x) for (x, y, w, h) in faces]
 
     if len(locations) == 0:
         return []
@@ -157,7 +170,7 @@ def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRE
     return None, closest_dist, 0.0
 
 
-def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_THRESHOLD):
+def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_THRESHOLD, progress_callback=None):
     """
     Processes multiple classroom photos using face_recognition library:
     1. Detects faces in every photo.
@@ -172,10 +185,14 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
     unmatched_faces_count = 0
 
     for idx, photo_bytes in enumerate(photo_bytes_list):
-        nparr = np.frombuffer(photo_bytes, np.uint8)
-        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        img = decode_image_with_exif(photo_bytes)
 
         if img is None:
+            if progress_callback:
+                try:
+                    progress_callback(idx + 1, len(photo_bytes_list), 0)
+                except Exception:
+                    pass
             continue
 
         face_data = generate_image_encodings(img)
@@ -188,6 +205,12 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
                 emb = generate_embedding(crop)
                 if emb:
                     face_data.append((bbox, emb))
+
+        if progress_callback:
+            try:
+                progress_callback(idx + 1, len(photo_bytes_list), len(face_data))
+            except Exception:
+                pass
 
         for bbox, embedding in face_data:
             matched_student, dist, conf = match_face_to_students(embedding, class_students, threshold=threshold)
@@ -224,7 +247,8 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
             'username': st.username,
             'name': name,
             'roll_number': st.roll_number,
-            'has_registered_face': bool(st.face_embedding)
+            'has_registered_face': bool(st.face_embedding),
+            'profile_picture': st.profile_picture.url if st.profile_picture else None
         }
         if st.id in present_student_ids:
             present_students.append(st_info)
