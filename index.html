@@ -1657,20 +1657,17 @@
 
       updateWebSocketStatus('connecting');
 
-      const isGitHubHost = window.location.hostname.includes('github.io');
-      const isTunnelHost = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
-      const protocol = (window.location.protocol === 'https:' || isGitHubHost || isTunnelHost) ? 'wss:' : 'ws:';
-      let host = '127.0.0.1:8000';
-      if (isGitHubHost) {
-        host = 'famished-savor-seventeen.ngrok-free.dev';
-      } else if (isTunnelHost) {
-        host = window.location.host;
-      } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        host = '127.0.0.1:8000';
-      } else if (window.location.hostname) {
-        host = `${window.location.hostname}:8000`;
+      // Automatically derive WebSocket host directly from active BACKEND_BASE
+      let wsHost = RENDER_HOST;
+      try {
+        const parsedUrl = new URL(BACKEND_BASE);
+        wsHost = parsedUrl.host;
+      } catch (e) {
+        wsHost = RENDER_HOST;
       }
-      const wsUrl = `${protocol}//${host}/ws/attendance/`;
+      const isSecure = BACKEND_BASE.startsWith('https:') || window.location.protocol === 'https:';
+      const protocol = isSecure ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${wsHost}/ws/attendance/`;
 
       try {
         state.socket = new WebSocket(wsUrl);
