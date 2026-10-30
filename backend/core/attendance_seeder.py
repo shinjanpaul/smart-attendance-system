@@ -1,7 +1,253 @@
+import os
 import datetime
 import sys
+import numpy as np
 from django.utils import timezone
+from django.conf import settings
 from .models import CustomUser, StudentClass, Subject, AttendanceLog
+
+def extract_face_embedding_from_file(rel_path):
+    """
+    Attempts to extract 128-D face embedding using dlib face_recognition from media file.
+    Returns 128-D list or None.
+    """
+    try:
+        import face_recognition
+        full_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+        if not os.path.exists(full_path):
+            return None
+        image = face_recognition.load_image_file(full_path)
+        encodings = face_recognition.face_encodings(image)
+        if encodings and len(encodings) > 0:
+            return encodings[0].astype(np.float32).tolist()
+    except Exception as e:
+        print(f"[AI] Face embedding extraction for {rel_path}: {e}")
+    return None
+
+def seed_database_complete():
+    """
+    Full automated seeding function for cloud container database (Render SQLite / PostgreSQL).
+    Creates:
+      1. Student Classes (B.Tech IT, B.Tech CSE, B.Tech AI & DS)
+      2. Department Subjects (IT801, IT802, IT803, CS601, AD401)
+      3. 5 Faculty Member Accounts with verified password 'teacher123'
+      4. Admin superuser account with password 'admin123'
+      5. 5 Student Accounts with Profile Pictures and 128-D Face Embeddings
+      6. 18 Realistic Past Attendance Sessions
+    """
+    if 'test' in sys.argv:
+        return
+
+    print("[SEED] Starting complete database initialization...")
+
+    # 1. Student Classes
+    class_it, _ = StudentClass.objects.get_or_create(
+        name='B.Tech IT 4th Yr - Sec A',
+        defaults={'department': 'Information Technology'}
+    )
+    class_cse, _ = StudentClass.objects.get_or_create(
+        name='B.Tech CSE - 3rd Year - Sec B',
+        defaults={'department': 'Computer Science'}
+    )
+    class_aids, _ = StudentClass.objects.get_or_create(
+        name='B.Tech AI & DS - 2nd Year',
+        defaults={'department': 'AI & Data Science'}
+    )
+
+    # 2. Subjects
+    subj_it801, _ = Subject.objects.get_or_create(
+        code='IT801',
+        defaults={'name': 'Cloud Computing & Distributed Systems', 'student_class': class_it}
+    )
+    if subj_it801.student_class_id != class_it.id:
+        subj_it801.student_class = class_it
+        subj_it801.save()
+
+    subj_it802, _ = Subject.objects.get_or_create(
+        code='IT802',
+        defaults={'name': 'Machine Learning & Pattern Recognition', 'student_class': class_it}
+    )
+    if subj_it802.student_class_id != class_it.id:
+        subj_it802.student_class = class_it
+        subj_it802.save()
+
+    subj_it803, _ = Subject.objects.get_or_create(
+        code='IT803',
+        defaults={'name': 'Cyber & Information Security', 'student_class': class_it}
+    )
+    if subj_it803.student_class_id != class_it.id:
+        subj_it803.student_class = class_it
+        subj_it803.save()
+
+    subj_cs601, _ = Subject.objects.get_or_create(
+        code='CS601',
+        defaults={'name': 'Computer Networks', 'student_class': class_cse}
+    )
+    if subj_cs601.student_class_id != class_cse.id:
+        subj_cs601.student_class = class_cse
+        subj_cs601.save()
+
+    subj_ad401, _ = Subject.objects.get_or_create(
+        code='AD401',
+        defaults={'name': 'Deep Learning & Computer Vision', 'student_class': class_aids}
+    )
+    if subj_ad401.student_class_id != class_aids.id:
+        subj_ad401.student_class = class_aids
+        subj_ad401.save()
+
+    # 3. Admin Account
+    admin_user, admin_created = CustomUser.objects.get_or_create(
+        username='admin',
+        defaults={
+            'email': 'admin@heritageit.edu',
+            'role': 'ADMIN',
+            'department': 'Information Technology',
+            'is_staff': True,
+            'is_superuser': True
+        }
+    )
+    if admin_created or not admin_user.check_password('admin123'):
+        admin_user.set_password('admin123')
+        admin_user.is_staff = True
+        admin_user.is_superuser = True
+        admin_user.save()
+
+    # 4. 5 Faculty Member Accounts
+    faculty_data = [
+        {
+            'username': 'prof_sudipta',
+            'first_name': 'Sudipta',
+            'last_name': 'Bhadra',
+            'email': 'sudipta.bhadra@heritageit.edu',
+            'department': 'Information Technology'
+        },
+        {
+            'username': 'prof_ananya',
+            'first_name': 'Ananya',
+            'last_name': 'Mukherjee',
+            'email': 'ananya.mukherjee@heritageit.edu',
+            'department': 'Information Technology'
+        },
+        {
+            'username': 'prof_rituparna',
+            'first_name': 'Rituparna',
+            'last_name': 'Sinha',
+            'email': 'rituparna.sinha@heritageit.edu',
+            'department': 'Information Technology'
+        },
+        {
+            'username': 'prof_rajesh',
+            'first_name': 'Rajesh',
+            'last_name': 'Sharma',
+            'email': 'rajesh.sharma@heritageit.edu',
+            'department': 'AI & Data Science'
+        },
+        {
+            'username': 'prof_debashis',
+            'first_name': 'Debashis',
+            'last_name': 'Roy',
+            'email': 'debashis.roy@heritageit.edu',
+            'department': 'Computer Science'
+        }
+    ]
+
+    for f_info in faculty_data:
+        f_user, f_created = CustomUser.objects.get_or_create(
+            username=f_info['username'],
+            defaults={
+                'first_name': f_info['first_name'],
+                'last_name': f_info['last_name'],
+                'email': f_info['email'],
+                'role': 'TEACHER',
+                'department': f_info['department'],
+                'is_staff': True
+            }
+        )
+        # Always ensure role='TEACHER', is_staff=True, and password='teacher123'
+        f_user.role = 'TEACHER'
+        f_user.department = f_info['department']
+        f_user.first_name = f_info['first_name']
+        f_user.last_name = f_info['last_name']
+        f_user.is_staff = True
+        f_user.set_password('teacher123')
+        f_user.save()
+        print(f"  [SEED] Faculty Account Ready: {f_info['username']} (Prof. {f_info['first_name']} {f_info['last_name']})")
+
+    # 5. Students with Profile Pictures and Biometric Face Embeddings
+    students_data = [
+        {
+            'username': 'Sourjya_Saha',
+            'roll': 'IT2354016',
+            'first': 'Sourjya',
+            'last': 'Saha',
+            'picture': 'profiles/Sourjya4_AoHEmsE.jpeg'
+        },
+        {
+            'username': 'shinjan_paul',
+            'roll': 'IT202601',
+            'first': 'Shinjan',
+            'last': 'Paul',
+            'picture': 'profiles/ShinjanPaul.jpeg'
+        },
+        {
+            'username': 'ayush_nyas',
+            'roll': 'IT202604',
+            'first': 'Ayush',
+            'last': 'Nyas',
+            'picture': 'profiles/Ayush.jpeg'
+        },
+        {
+            'username': 'biswajit_sinha',
+            'roll': 'IT202602',
+            'first': 'Biswajit',
+            'last': 'Sinha',
+            'picture': 'profiles/4.jpeg'
+        },
+        {
+            'username': 'hammad_akhter',
+            'roll': 'IT202603',
+            'first': 'Hammad',
+            'last': 'Akhter',
+            'picture': None
+        },
+    ]
+
+    for s_info in students_data:
+        student = CustomUser.objects.filter(username__iexact=s_info['username']).first() or \
+                  CustomUser.objects.filter(roll_number=s_info['roll']).first()
+
+        if not student:
+            student = CustomUser.objects.create_user(
+                username=s_info['username'],
+                first_name=s_info['first'],
+                last_name=s_info['last'],
+                roll_number=s_info['roll'],
+                role='STUDENT',
+                department='Information Technology',
+                student_class=class_it
+            )
+        else:
+            student.student_class = class_it
+            student.first_name = s_info['first']
+            student.last_name = s_info['last']
+            student.roll_number = s_info['roll']
+            student.role = 'STUDENT'
+
+        # Set profile picture and face embedding if available
+        if s_info['picture']:
+            student.profile_picture = s_info['picture']
+            if not student.face_embedding:
+                emb = extract_face_embedding_from_file(s_info['picture'])
+                if emb:
+                    student.face_embedding = emb
+                    print(f"  [AI] Generated 128-D face embedding for {student.username} from {s_info['picture']}")
+
+        student.save()
+        print(f"  [SEED] Student Ready: {student.username} (Roll: {s_info['roll']})")
+
+    # 6. Seed Realistic Past Attendance Sessions (18 total: 10 Cloud, 8 Cyber)
+    seed_realistic_attendance()
+    print("[SUCCESS] All cloud database records initialized successfully!")
 
 def seed_realistic_attendance():
     """

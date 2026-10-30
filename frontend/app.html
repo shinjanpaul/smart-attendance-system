@@ -926,17 +926,22 @@
 
   <!-- Core Interactive Script with Real Django Backend Connection -->
   <script>
+    const RENDER_HOST = 'veriface-backend-0408.onrender.com';
     const NGROK_HOST = 'famished-savor-seventeen.ngrok-free.dev';
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isGitHub = window.location.hostname.includes('github.io');
+    const isRender = window.location.hostname.includes('onrender.com');
     const isTunnel = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
+    const isAndroidApp = window.location.protocol === 'file:' || navigator.userAgent.includes('VeriFaceAndroid');
 
     let BACKEND_BASE = 'http://127.0.0.1:8000';
-    if (isGitHub) {
-      BACKEND_BASE = `https://${NGROK_HOST}`;
-    } else if (isTunnel) {
+    if (isAndroidApp) {
+      BACKEND_BASE = localStorage.getItem('veriface_backend_override') || `https://${RENDER_HOST}`;
+    } else if (isGitHub) {
+      BACKEND_BASE = `https://${RENDER_HOST}`;
+    } else if (isRender || isTunnel) {
       BACKEND_BASE = window.location.origin;
-    } else if (isLocal || window.location.protocol === 'file:') {
+    } else if (isLocal) {
       BACKEND_BASE = 'http://127.0.0.1:8000';
     } else if (window.location.port === '8080' || window.location.port === '8000') {
       BACKEND_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;

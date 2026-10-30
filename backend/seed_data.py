@@ -5,11 +5,12 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'smart_attendance.settings')
 django.setup()
 
 from core.models import CustomUser, AttendanceLog, Task, Submission, StudentClass, Subject
+from core.attendance_seeder import seed_database_complete
 from django.utils import timezone
 from datetime import timedelta
 
 def seed():
-    print("[INFO] Seeding initial database data for Smart Attendance System...")
+    seed_database_complete()
 
     # Create Student Classes
     class_csea, _ = StudentClass.objects.get_or_create(name='CSE-A', defaults={'department': 'Computer Science'})

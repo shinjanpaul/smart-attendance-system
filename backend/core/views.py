@@ -69,6 +69,15 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user = CustomUser.objects.filter(username__iexact=username).first()
         if not user:
+            # Auto-seed database if user not found (e.g. freshly booted cloud container)
+            try:
+                from .attendance_seeder import seed_database_complete
+                seed_database_complete()
+                user = CustomUser.objects.filter(username__iexact=username).first()
+            except Exception as e:
+                print(f"[ERROR] Auto-seed on login: {e}")
+
+        if not user:
             return Response({'error': f"User '{username}' was not found in the database."}, status=status.HTTP_404_NOT_FOUND)
 
         # Teachers MUST provide their admin-assigned password
@@ -90,6 +99,13 @@ class UserViewSet(viewsets.ModelViewSet):
     def students(self, request):
         class_id = request.query_params.get('class_id')
         students = CustomUser.objects.filter(role='STUDENT')
+        if not students.exists():
+            try:
+                from .attendance_seeder import seed_database_complete
+                seed_database_complete()
+                students = CustomUser.objects.filter(role='STUDENT')
+            except Exception as e:
+                print(f"[ERROR] Auto-seed students: {e}")
         if class_id:
             students = students.filter(student_class_id=class_id)
         serializer = self.get_serializer(students, many=True)
@@ -98,6 +114,13 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def teachers(self, request):
         teachers = CustomUser.objects.filter(role='TEACHER')
+        if not teachers.exists():
+            try:
+                from .attendance_seeder import seed_database_complete
+                seed_database_complete()
+                teachers = CustomUser.objects.filter(role='TEACHER')
+            except Exception as e:
+                print(f"[ERROR] Auto-seed teachers: {e}")
         serializer = self.get_serializer(teachers, many=True)
         return Response(serializer.data)
 

@@ -52,5 +52,5 @@ RUN python manage.py collectstatic --noinput || true
 # Render dynamically assigns the PORT environment variable
 EXPOSE 8000
 
-# Run migrations and launch Daphne ASGI server
-CMD ["sh", "-c", "python manage.py migrate --noinput && daphne -b 0.0.0.0 -p ${PORT:-8000} smart_attendance.asgi:application"]
+# Run migrations, seed cloud database with faculty and student accounts, and launch Daphne ASGI server
+CMD ["sh", "-c", "python manage.py migrate --noinput && python seed_cloud_db.py && daphne -b 0.0.0.0 -p ${PORT:-8000} smart_attendance.asgi:application"]
