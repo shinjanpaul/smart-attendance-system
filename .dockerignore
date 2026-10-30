@@ -7,7 +7,4 @@ web
 venv
 *.bat
 *.log
-*.png
-*.jpg
-*.jpeg
 *.md

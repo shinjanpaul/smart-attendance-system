@@ -8,18 +8,47 @@ from .models import CustomUser, StudentClass, Subject, AttendanceLog
 
 def extract_face_embedding_from_file(rel_path):
     """
-    Attempts to extract 128-D face embedding using dlib face_recognition from media file.
+    Extracts 128-D face embedding using VeriFace AI engine (with EXIF camera rotation correction,
+    HOG upsampled face detector, and 128-D ResNet encoder).
     Returns 128-D list or None.
     """
     try:
-        import face_recognition
-        full_path = os.path.join(settings.MEDIA_ROOT, rel_path)
+        from .ai_engine import (
+            decode_image_with_exif, generate_image_encodings,
+            detect_all_faces, crop_and_preprocess_face, generate_embedding
+        )
+        full_path = os.path.join(str(settings.MEDIA_ROOT), rel_path)
         if not os.path.exists(full_path):
+            full_path = os.path.join(str(settings.BASE_DIR), 'media', rel_path)
+        if not os.path.exists(full_path):
+            candidate = os.path.join(str(settings.BASE_DIR), rel_path)
+            if os.path.exists(candidate):
+                full_path = candidate
+            else:
+                print(f"[AI] Photo file not found at: {full_path}")
+                return None
+
+        with open(full_path, 'rb') as f:
+            photo_bytes = f.read()
+
+        img = decode_image_with_exif(photo_bytes)
+        if img is None:
             return None
-        image = face_recognition.load_image_file(full_path)
-        encodings = face_recognition.face_encodings(image)
-        if encodings and len(encodings) > 0:
-            return encodings[0].astype(np.float32).tolist()
+
+        # 1. Try full-frame face encodings directly
+        encs = generate_image_encodings(img)
+        if encs and len(encs) > 0:
+            return encs[0][1]
+
+        # 2. Fallback to detect largest face + crop + generate embedding
+        bboxes = detect_all_faces(img)
+        if bboxes and len(bboxes) > 0:
+            primary_bbox = max(bboxes, key=lambda b: b[2] * b[3])
+            crop = crop_and_preprocess_face(img, primary_bbox)
+            emb = generate_embedding(crop)
+            if emb:
+                return emb
+
     except Exception as e:
         print(f"[AI] Face embedding extraction for {rel_path}: {e}")
     return None
@@ -245,8 +274,9 @@ def seed_database_complete():
         student.save()
         print(f"  [SEED] Student Ready: {student.username} (Roll: {s_info['roll']})")
 
-    # 6. Seed Realistic Past Attendance Sessions (18 total: 10 Cloud, 8 Cyber)
-    seed_realistic_attendance()
+    # 6. Seed Realistic Past Attendance Sessions only if table is empty
+    if AttendanceLog.objects.count() == 0:
+        seed_realistic_attendance()
     print("[SUCCESS] All cloud database records initialized successfully!")
 
 def seed_realistic_attendance():
@@ -306,8 +336,8 @@ def seed_realistic_attendance():
         subj_software.student_class = target_class
         subj_software.save()
 
-    # Clean up obsolete legacy test logs so all students in Class 1 share the exact same 18 sessions
-    AttendanceLog.objects.filter(id__lte=25).delete()
+    # Clean up obsolete legacy test logs only if there are few logs
+    # AttendanceLog.objects.filter(id__lte=25).delete()
 
     # 3. Target Students
     students_data = [

@@ -99,13 +99,25 @@ class UserViewSet(viewsets.ModelViewSet):
     def students(self, request):
         class_id = request.query_params.get('class_id')
         students = CustomUser.objects.filter(role='STUDENT')
-        if not students.exists():
+        if not students.exists() or not any(s.face_embedding for s in students):
             try:
                 from .attendance_seeder import seed_database_complete
                 seed_database_complete()
                 students = CustomUser.objects.filter(role='STUDENT')
             except Exception as e:
                 print(f"[ERROR] Auto-seed students: {e}")
+
+        for s in students:
+            if not s.face_embedding and s.profile_picture:
+                try:
+                    from .attendance_seeder import extract_face_embedding_from_file
+                    emb = extract_face_embedding_from_file(str(s.profile_picture))
+                    if emb:
+                        s.face_embedding = emb
+                        s.save(update_fields=['face_embedding'])
+                except Exception:
+                    pass
+
         if class_id:
             students = students.filter(student_class_id=class_id)
         serializer = self.get_serializer(students, many=True)
@@ -189,6 +201,16 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
 
         # Scoped matching: query students belonging strictly to the selected class
         class_students = list(CustomUser.objects.filter(role='STUDENT', student_class_id=class_id))
+        for s in class_students:
+            if not s.face_embedding and s.profile_picture:
+                try:
+                    from .attendance_seeder import extract_face_embedding_from_file
+                    emb = extract_face_embedding_from_file(str(s.profile_picture))
+                    if emb:
+                        s.face_embedding = emb
+                        s.save(update_fields=['face_embedding'])
+                except Exception:
+                    pass
         total_photos = len(photos)
 
         # Broadcast live photo-by-photo progress via WebSockets
