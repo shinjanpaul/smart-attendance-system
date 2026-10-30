@@ -9,7 +9,7 @@ ENV PORT=8000
 
 WORKDIR /app
 
-# Install minimal system dependencies required for C++ build, Git (for models), and OpenCV
+# Install minimal system dependencies required for C++ build, Git, and OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
@@ -20,20 +20,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade packaging tools
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+# Crucial: setuptools<82.0.0 is strictly required because face_recognition_models imports pkg_resources!
+RUN pip install --no-cache-dir "setuptools<82.0.0" wheel pip
 
-# Install numpy first (required by dlib bindings)
+# Install numpy first
 RUN pip install --no-cache-dir numpy==1.26.4
 
-# Compile dlib with 1 single thread (prevents memory ballooning over 8GB)
+# Compile dlib strictly with 1 thread
 RUN CMAKE_BUILD_PARALLEL_LEVEL=1 pip install --no-cache-dir dlib==19.24.4
 
-# Install official face_recognition_models directly from repository as instructed by log
+# Install official models package
 RUN pip install --no-cache-dir git+https://github.com/ageitgey/face_recognition_models
 
-# Install face-recognition without recompiling dlib
+# Install face-recognition
 RUN pip install --no-cache-dir --no-deps face-recognition==1.3.0
+
+# Verify face_recognition imports successfully right inside the build step!
+RUN python -c "import face_recognition; print(' Face Recognition Engine Ready!')"
 
 # Copy and install application requirements
 COPY backend/requirements.txt .
