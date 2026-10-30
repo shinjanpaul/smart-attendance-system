@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: veriface-ai-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    region: oregon
+    envVars:
+      - key: USE_SQLITE
+        value: "True"
+      - key: PYTHONUNBUFFERED
+        value: "1"

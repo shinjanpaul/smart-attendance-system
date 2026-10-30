@@ -1,0 +1,3722 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
+  <meta http-equiv="Pragma" content="no-cache"/>
+  <meta http-equiv="Expires" content="0"/>
+  <title>VeriFace AI • Smart Attendance Application</title>
+  
+  <!-- Fonts & Material Symbols -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin=""/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+
+  <!-- Supabase Cloud Client (100% Free Forever Tier) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.SUPABASE_URL = 'https://ymcakklhzkuylowlhzms.supabase.co';
+    window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltY2Fra2xoemt1eWxvd2xoem1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2ODQ5MTksImV4cCI6MjEwNDI2MDkxOX0.B7E5E_mtAtOIWKNG0bRVrcg6Z2LOJnMpYtDYc70Xmt4';
+    try {
+      if (window.supabase) {
+        window.sbClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        console.log('⚡ Connected to Supabase Cloud live database!');
+      }
+    } catch (e) {
+      console.warn('Supabase init notice:', e);
+    }
+  </script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "surface": "#f8f9ff",
+            "on-surface": "#0b1c30",
+            "on-surface-variant": "#464555",
+            "primary": "#3525cd",
+            "primary-container": "#4f46e5",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#dad7ff",
+            "primary-fixed": "#e2dfff",
+            "on-primary-fixed-variant": "#3323cc",
+            "secondary": "#545f73",
+            "secondary-container": "#d5e0f8",
+            "on-secondary-container": "#586377",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-low": "#eff4ff",
+            "surface-container": "#e5eeff",
+            "surface-container-high": "#dce9ff",
+            "outline-variant": "#c7c4d8",
+            "error": "#ba1a1a",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+          },
+          fontFamily: {
+            "headline-md": ["Plus Jakarta Sans", "sans-serif"],
+            "body-md": ["Inter", "sans-serif"],
+            "title-md": ["Plus Jakarta Sans", "sans-serif"],
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { overscroll-behavior: none; font-family: 'Inter', sans-serif; }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+    ::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body class="bg-surface text-on-surface antialiased flex flex-col min-h-screen">
+
+  <!-- Fixed Top Header -->
+  <header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
+    <div class="h-16 px-4 flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm shadow-inner">
+          VF
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-sm text-on-surface">VeriFace</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-primary-fixed text-on-primary-fixed-variant text-[10px] font-bold uppercase">AI</span>
+          </div>
+          <div class="flex items-center gap-1.5 flex-wrap">
+            <span id="header-pulse-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="header-connection-status" class="text-[11px] text-on-surface-variant">API Live • 127.0.0.1:8000</span>
+            <span class="text-outline-variant/60 text-[10px] hidden sm:inline">•</span>
+            <span id="header-ws-pill" class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded-full border border-emerald-200 dark:border-emerald-800">
+              <span id="header-ws-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+              <span id="header-ws-text">WS Live</span>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="hidden sm:flex flex-col items-end text-xs">
+          <span class="font-semibold text-on-surface" id="header-screen-title">Faculty Portal</span>
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <span id="header-db-status" class="text-emerald-600 text-[11px] font-medium">Django Live • DB Connected</span>
+            <span class="text-gray-300 dark:text-gray-600 text-[10px]">•</span>
+            <span id="header-ws-right" class="text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+              ⚡ WS Live
+            </span>
+          </div>
+        </div>
+        <div class="relative w-9 h-9">
+          <div class="w-full h-full rounded-full bg-surface-container-high ring-2 ring-primary/20 flex items-center justify-center text-primary font-bold text-xs overflow-hidden">
+            <img id="top-avatar-img" class="w-full h-full object-cover hidden" alt="Avatar" onerror="this.classList.add('hidden'); document.getElementById('faculty-avatar-initials').classList.remove('hidden');" />
+            <span id="faculty-avatar-initials">SB</span>
+          </div>
+          <span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-surface z-10"></span>
+        </div>
+        <button id="btn-logout" onclick="performLogout()" class="hidden px-2.5 py-1 rounded-xl bg-surface-container hover:bg-error-container hover:text-error text-xs font-semibold text-secondary transition-all flex items-center gap-1 shadow-sm">
+          <span class="material-symbols-outlined text-[16px]">logout</span>
+          <span class="hidden sm:inline">Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Floating Real-Time WebSocket Toast Notifications Container -->
+  <div id="toast-container" class="fixed top-16 right-4 left-4 sm:left-auto sm:right-6 sm:w-96 z-50 flex flex-col gap-2 pointer-events-none" aria-live="polite"></div>
+
+  <!-- Real-Time AI Biometric Scanning Modal Overlay (WebSocket Powered) -->
+  <div id="ai-scan-modal" class="hidden fixed inset-0 z-50 bg-black/65 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300">
+    <div class="w-full max-w-sm bg-surface-container-lowest rounded-3xl p-6 shadow-2xl border border-outline-variant/30 flex flex-col items-center text-center space-y-4">
+      
+      <!-- Biometric Scanner Radar Icon -->
+      <div class="relative w-20 h-20 rounded-3xl bg-indigo-50 dark:bg-indigo-950/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-inner">
+        <span class="material-symbols-outlined text-[42px] animate-pulse">document_scanner</span>
+        <span class="absolute -top-1 -right-1 flex h-4 w-4">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-4 w-4 bg-emerald-500"></span>
+        </span>
+      </div>
+
+      <!-- Title & Live Status -->
+      <div>
+        <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-200 dark:border-emerald-800 mb-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span>WebSocket Real-Time Stream</span>
+        </div>
+        <h3 id="modal-scan-title" class="font-bold text-lg text-on-surface">AI Biometrics in Progress...</h3>
+        <p id="modal-scan-subtitle" class="text-xs text-secondary mt-0.5">dlib 128-D vector matching across angles</p>
+      </div>
+
+      <!-- Live Fractional Progress & Percentage Box -->
+      <div class="w-full bg-surface-container-low rounded-2xl p-4 border border-outline-variant/20 space-y-3">
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-bold text-on-surface" id="modal-scan-fraction">Photo 1 of 3</span>
+          <span class="font-mono font-extrabold text-primary text-sm px-2 py-0.5 rounded-full bg-primary/10" id="modal-scan-percentage">33%</span>
+        </div>
+
+        <!-- Progress Bar Track -->
+        <div class="w-full bg-surface-container-highest rounded-full h-3 overflow-hidden shadow-inner">
+          <div id="modal-scan-bar" class="bg-gradient-to-r from-indigo-500 via-primary to-purple-600 h-full rounded-full transition-all duration-500 ease-out shadow-sm" style="width: 0%"></div>
+        </div>
+
+        <!-- Detected Faces & Status -->
+        <div class="flex items-center justify-between text-[11px] text-secondary">
+          <span class="flex items-center gap-1">
+            <span class="material-symbols-outlined text-[15px] text-primary">face</span>
+            <span id="modal-scan-faces">Detecting faces in frame...</span>
+          </span>
+          <span class="text-emerald-600 dark:text-emerald-400 font-semibold" id="modal-scan-status">Syncing biometrics...</span>
+        </div>
+      </div>
+
+      <!-- Subtext -->
+      <p class="text-[10px] text-secondary leading-tight">Analyzing 128-D facial landmarks with dlib ResNet. Your roster will display automatically once complete.</p>
+    </div>
+  </div>
+
+  <!-- SCREEN 1: LOGIN -->
+  <section id="screen-login" class="screen flex flex-col items-center justify-center min-h-screen p-4 pt-20 pb-20">
+    <div class="w-full max-w-md bg-surface-container-lowest rounded-2xl p-6 shadow-sm border border-outline-variant/30 flex flex-col gap-5">
+      <div class="text-center flex flex-col items-center">
+        <div class="w-16 h-16 rounded-2xl bg-primary-fixed flex items-center justify-center text-primary mb-2 shadow-inner">
+          <span class="material-symbols-outlined text-[36px]">face</span>
+        </div>
+        <h1 class="font-bold text-2xl text-on-surface">VeriFace</h1>
+        <p class="text-xs text-secondary mt-1">Smart Attendance with dlib 128-D ResNet</p>
+      </div>
+
+      <div class="grid grid-cols-2 p-1 bg-surface-container rounded-xl text-xs font-semibold">
+        <button id="login-role-teacher" onclick="setLoginRole('teacher')" class="py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm">
+          Teacher Portal
+        </button>
+        <button id="login-role-student" onclick="setLoginRole('student')" class="py-2.5 rounded-lg text-secondary">
+          Student Portal
+        </button>
+      </div>
+
+      <!-- Error Message Box -->
+      <div id="login-error-box" class="hidden p-3 rounded-xl bg-error-container text-on-error-container text-xs font-semibold flex items-center gap-2 border border-error/20">
+        <span class="material-symbols-outlined text-[18px] text-error shrink-0">lock_reset</span>
+        <span id="login-error-text">Incorrect faculty password.</span>
+      </div>
+
+      <!-- TEACHER LOGIN SECTION (Password Required from Django Admin) -->
+      <div id="section-teacher-login" class="flex flex-col gap-3">
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Select Faculty Account</span>
+            <span id="faculty-fetch-status" class="text-[10px] text-primary font-medium">Loading live professors...</span>
+          </div>
+          <div id="preset-teachers-grid" class="grid grid-cols-2 gap-2 text-xs">
+            <button onclick="fillLogin('prof_sudipta', 'teacher')" class="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border-2 border-primary ring-2 ring-primary/10">
+              <div class="font-bold text-on-surface truncate">Prof. Sudipta Bhadra</div>
+              <div class="text-[10px] text-secondary truncate">Info Technology</div>
+            </button>
+            <button onclick="fillLogin('prof_ananya', 'teacher')" class="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border border-outline-variant/30">
+              <div class="font-bold text-on-surface truncate">Prof. Ananya Mukherjee</div>
+              <div class="text-[10px] text-secondary truncate">Info Technology</div>
+            </button>
+            <button onclick="fillLogin('prof_rajesh', 'teacher')" class="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border border-outline-variant/30">
+              <div class="font-bold text-on-surface truncate">Prof. Rajesh Sharma</div>
+              <div class="text-[10px] text-secondary truncate">AI &amp; Data Science</div>
+            </button>
+            <button onclick="fillLogin('prof_debashis', 'teacher')" class="p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border border-outline-variant/30">
+              <div class="font-bold text-on-surface truncate">Prof. Debashis Roy</div>
+              <div class="text-[10px] text-secondary truncate">Comp Science</div>
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <div class="flex justify-between items-center">
+            <label class="text-xs font-semibold text-secondary">Faculty Password</label>
+            <span class="text-[10px] text-primary font-semibold">Assigned in Django Admin</span>
+          </div>
+          <div class="relative">
+            <input id="login-password" type="password" placeholder="Enter faculty password" class="w-full p-3 pr-10 bg-surface-container-low rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 border border-outline-variant/30"/>
+            <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3 top-2.5 text-secondary hover:text-on-surface">
+              <span id="pwd-toggle-icon" class="material-symbols-outlined text-[18px]">visibility</span>
+            </button>
+          </div>
+          <div class="text-[10px] text-secondary flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px] text-primary">security</span>
+            <span>Default initial password: <code class="font-bold text-primary">teacher123</code> (admin modifiable)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STUDENT PORTAL SECTION (Passwordless: Pick Professor & Student Name) -->
+      <div id="section-student-login" class="hidden flex flex-col gap-3">
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-secondary">Portal Username</label>
+          <div class="w-full p-3 bg-surface-container-low rounded-xl text-xs font-semibold text-on-surface border border-outline-variant/30 flex items-center justify-between">
+            <span id="student-portal-username-display">ayush_nyas</span>
+            <span class="material-symbols-outlined text-primary text-[18px]">badge</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Select Faculty Account</span>
+            <span id="student-faculty-status" class="text-[10px] text-primary font-medium">4 Live Professors in DB</span>
+          </div>
+          <div id="student-faculty-picker" class="grid grid-cols-2 gap-2 text-xs">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Tap Your Name to View Attendance</span>
+            <span class="text-[10px] text-emerald-600 font-bold">1-Tap Instant Entry</span>
+          </div>
+          <div id="preset-students-grid" class="grid grid-cols-2 gap-2 text-xs">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden input tracking selected username -->
+      <input id="login-input" type="hidden" value="prof_sudipta" />
+
+      <button id="btn-portal-submit" onclick="performLogin()" class="w-full py-3.5 rounded-xl bg-primary text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-primary-container active:scale-95 transition-all">
+        <span id="btn-portal-text">Login to Faculty Portal</span>
+        <span id="btn-portal-icon" class="material-symbols-outlined text-[18px]">lock</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- SCREEN 2: TEACHER DASHBOARD -->
+  <section id="screen-dashboard" class="screen hidden flex-col w-full max-w-lg mx-auto p-4 pt-20 pb-24 space-y-4">
+    <!-- Faculty Card -->
+    <div class="flex items-center justify-between p-4 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container ring-2 ring-primary/20 shrink-0">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" alt="Prof" class="w-full h-full object-cover"/>
+        </div>
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-secondary">Faculty Portal</span>
+          <h2 id="faculty-profile-name" class="font-bold text-sm text-on-surface">Prof. Sudipta Bhadra</h2>
+          <span id="faculty-profile-dept" class="text-xs text-secondary">Dept. of Information Technology</span>
+        </div>
+      </div>
+      <div class="text-right text-xs">
+        <span class="font-bold text-primary">Fall 2026</span>
+        <div id="faculty-period-info" class="text-secondary text-[11px]">Period 02</div>
+      </div>
+    </div>
+
+    <!-- Active Cohort -->
+    <div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 space-y-2 text-xs">
+      <div class="flex justify-between font-semibold text-secondary">
+        <span>ACTIVE ACADEMIC SCOPE</span>
+        <span id="faculty-room-info" class="text-primary font-bold">Classroom 302</span>
+      </div>
+      <div class="p-2.5 rounded-xl bg-surface-container-low flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[18px]">school</span>
+        <div>
+          <div class="text-[10px] text-secondary">Cohort</div>
+          <div id="faculty-cohort-name" class="font-bold text-on-surface">B.Tech IT - 4th Year - Sec A</div>
+        </div>
+      </div>
+      <div class="p-2.5 rounded-xl bg-surface-container-low flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[18px]">dns</span>
+        <div>
+          <div class="text-[10px] text-secondary">Course</div>
+          <div id="faculty-course-name" class="font-bold text-on-surface">Cloud Computing &amp; Distributed Systems (IT801)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bento Stats -->
+    <div class="grid grid-cols-2 gap-2.5 text-center text-xs">
+      <div class="p-3.5 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-secondary text-[11px] font-semibold">Classes Taken</span>
+          <span class="material-symbols-outlined text-primary text-[18px]">history_edu</span>
+        </div>
+        <div class="my-1">
+          <span id="faculty-classes-taken" class="font-extrabold text-2xl text-primary">0</span>
+        </div>
+        <div class="text-[10px] text-primary font-semibold" id="faculty-classes-sub">• 0 Sessions Recorded</div>
+      </div>
+      <div class="p-3.5 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-secondary text-[11px] font-semibold">Total Enrolled</span>
+          <span class="material-symbols-outlined text-indigo-600 text-[18px]">groups</span>
+        </div>
+        <div class="my-1">
+          <span id="faculty-enrolled-count" class="font-extrabold text-2xl text-on-surface">5</span>
+        </div>
+        <div class="text-[10px] text-secondary font-semibold">• Full Class Roster</div>
+      </div>
+      <div class="p-3.5 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-secondary text-[11px] font-semibold">Bio Indexed</span>
+          <span class="material-symbols-outlined text-emerald-600 text-[18px]">face</span>
+        </div>
+        <div class="my-1">
+          <span id="faculty-bio-indexed" class="font-extrabold text-2xl text-emerald-600">5/5</span>
+        </div>
+        <div class="text-[10px] text-emerald-600 font-semibold">• 100% AI Ready</div>
+      </div>
+      <div class="p-3.5 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-secondary text-[11px] font-semibold">Avg Attendance</span>
+          <span class="material-symbols-outlined text-indigo-600 text-[18px]">trending_up</span>
+        </div>
+        <div class="my-1">
+          <span id="faculty-avg-attend" class="font-extrabold text-2xl text-indigo-600">90.0%</span>
+        </div>
+        <div class="text-[10px] text-indigo-600 font-semibold" id="faculty-avg-sub">• Course Average</div>
+      </div>
+    </div>
+
+    <!-- Live Classroom Hero Banner -->
+    <div class="rounded-2xl bg-gradient-to-br from-primary to-primary-container p-4 text-white shadow-lg shadow-primary/25 space-y-3">
+      <div class="flex justify-between items-center text-xs">
+        <span class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase">AI Engine Ready</span>
+        <span class="material-symbols-outlined">center_focus_strong</span>
+      </div>
+      <div>
+        <h3 class="font-bold text-base">Live Classroom Attendance</h3>
+        <p class="text-xs text-white/80 mt-1" id="faculty-hero-desc">Multi-face capture using dlib 128-D embedding matrix.</p>
+      </div>
+      <button onclick="navigateTo('take-attendance')" class="w-full py-3 rounded-xl bg-white text-primary font-bold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-[18px]">center_focus_strong</span>
+        <span>Start Multi-Photo AI Scan</span>
+      </button>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+      <button onclick="navigateTo('face-id')" class="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 hover:border-primary">
+        <div class="w-8 h-8 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto mb-1">
+          <span class="material-symbols-outlined text-[18px]">person_add</span>
+        </div>
+        <div class="font-bold">Face IDs</div>
+        <div class="text-[10px] text-amber-800">4 Enrolled</div>
+      </button>
+      <button onclick="navigateTo('attendance-review')" class="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 hover:border-primary">
+        <div class="w-8 h-8 rounded-full bg-indigo-100 text-primary flex items-center justify-center mx-auto mb-1">
+          <span class="material-symbols-outlined text-[18px]">fact_check</span>
+        </div>
+        <div class="font-bold">Review</div>
+        <div class="text-[10px] text-primary">Live Roster</div>
+      </button>
+      <button onclick="navigateTo('history')" class="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 hover:border-primary">
+        <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto mb-1">
+          <span class="material-symbols-outlined text-[18px]">history</span>
+        </div>
+        <div class="font-bold">History</div>
+        <div class="text-[10px] text-emerald-800" id="faculty-history-count-badge">0 Sessions</div>
+      </button>
+    </div>
+  </section>
+
+  <!-- SCREEN 2B: STUDENT PORTAL DASHBOARD -->
+  <section id="screen-student-dashboard" class="screen hidden flex-col w-full max-w-lg mx-auto p-4 pt-20 pb-24 space-y-4">
+    <!-- Student Profile Card -->
+    <div class="flex items-center justify-between p-4 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30">
+      <div class="flex items-center gap-3">
+        <div id="student-avatar-box" class="w-12 h-12 rounded-full overflow-hidden bg-primary-fixed ring-2 ring-primary/20 shrink-0 flex items-center justify-center font-bold text-primary text-base">
+          <img id="student-avatar-img" class="w-full h-full object-cover hidden" alt="Student Profile" onerror="this.classList.add('hidden'); document.getElementById('student-avatar-initials').classList.remove('hidden');" />
+          <span id="student-avatar-initials">AN</span>
+        </div>
+        <div>
+          <span class="text-[10px] font-bold uppercase tracking-wider text-secondary">Student Portal</span>
+          <h2 id="student-profile-name" class="font-bold text-sm text-on-surface">Ayush Nyas</h2>
+          <span id="student-profile-roll" class="text-xs text-secondary">Roll: IT202604 • B.Tech IT 4th Yr</span>
+        </div>
+      </div>
+      <div class="text-right text-xs">
+        <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]" id="student-standing-pill">Good Standing</span>
+        <div class="text-secondary text-[11px] mt-0.5" id="student-dept-tag">IT Dept</div>
+      </div>
+    </div>
+
+    <!-- Overall Attendance Hero Card -->
+    <div class="rounded-2xl bg-gradient-to-br from-indigo-900 to-primary p-5 text-white shadow-lg shadow-primary/25 space-y-3">
+      <div class="flex justify-between items-center text-xs">
+        <span class="px-2.5 py-1 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider">Attendance Status</span>
+        <span class="text-white/80 text-[11px]" id="student-sync-timestamp">Minimum Criteria: 75%</span>
+      </div>
+      <div class="flex items-baseline justify-between">
+        <div>
+          <div class="text-3xl font-extrabold tracking-tight" id="student-overall-percentage">87.5%</div>
+          <p class="text-xs text-white/80 mt-0.5" id="student-days-summary">14 of 16 Sessions Attended</p>
+        </div>
+        <div class="text-right">
+          <span class="material-symbols-outlined text-4xl text-emerald-400">verified_user</span>
+        </div>
+      </div>
+      <div class="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+        <div id="student-progress-bar" class="bg-emerald-400 h-full rounded-full transition-all duration-500" style="width: 87.5%"></div>
+      </div>
+      <div class="flex justify-between text-[11px] text-white/70">
+        <span>Required: 75%</span>
+        <span class="text-emerald-300 font-semibold" id="student-margin-text">+12.5% Above Safety Margin</span>
+      </div>
+    </div>
+
+    <!-- Student Attendance Bento Metrics -->
+    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+      <div class="p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30">
+        <span class="font-bold text-lg text-on-surface" id="student-total-held">16</span>
+        <div class="text-secondary text-[11px]">Total Classes</div>
+        <div class="text-[10px] text-primary font-semibold mt-0.5">• All Courses</div>
+      </div>
+      <div class="p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30">
+        <span class="font-bold text-lg text-emerald-600" id="student-total-attended">14</span>
+        <div class="text-secondary text-[11px]">Attended</div>
+        <div class="text-[10px] text-emerald-600 font-semibold mt-0.5">Face Verified</div>
+      </div>
+      <div class="p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30">
+        <span class="font-bold text-lg text-error" id="student-total-missed">2</span>
+        <div class="text-secondary text-[11px]">Absences</div>
+        <div class="text-[10px] text-error font-semibold mt-0.5">Leaves Recorded</div>
+      </div>
+    </div>
+
+    <!-- Course Breakdown -->
+    <div class="p-4 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 space-y-3 text-xs">
+      <div class="flex justify-between font-bold text-secondary uppercase tracking-wider text-[11px]">
+        <span>Course Attendance Breakdown</span>
+        <span class="text-primary">Status</span>
+      </div>
+      <div id="student-course-list" class="space-y-2">
+        <div class="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between">
+          <div>
+            <div class="font-bold text-on-surface">Cloud Computing &amp; Distributed Systems (IT801)</div>
+            <div class="text-[10px] text-secondary">Prof. Sudipta Bhadra • 9/10 Classes</div>
+          </div>
+          <span class="font-bold text-emerald-600 text-xs">90.0%</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-surface-container-low flex items-center justify-between">
+          <div>
+            <div class="font-bold text-on-surface">Cyber &amp; Information Security (IT803)</div>
+            <div class="text-[10px] text-secondary">Prof. Ananya Mukherjee • 5/6 Classes</div>
+          </div>
+          <span class="font-bold text-emerald-600 text-xs">83.3%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Link to Full Log -->
+    <button onclick="navigateTo('history')" class="w-full py-3 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-primary text-primary font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all">
+      <span class="material-symbols-outlined text-[18px]">history</span>
+      <span>View Detailed Attendance Log History</span>
+    </button>
+  </section>
+
+  <!-- SCREEN 3: TAKE ATTENDANCE (SCAN) -->
+  <section id="screen-take-attendance" class="screen hidden flex-col w-full max-w-lg mx-auto p-4 pt-20 pb-24 space-y-4">
+    <div class="flex items-center justify-between text-xs">
+      <span class="px-2.5 py-1 rounded-full bg-primary-fixed text-primary font-bold uppercase">Step 1 of 2</span>
+      <span class="text-secondary font-medium">Capture &amp; Process</span>
+    </div>
+
+    <!-- Offline Buffer Sync Notice Banner -->
+    <div id="offline-queue-banner" class="hidden p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-center justify-between text-xs animate-fadeIn">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-amber-600 text-[20px]">cloud_sync</span>
+        <div>
+          <div class="font-bold" id="offline-queue-title">Offline Buffer Active</div>
+          <div class="text-[10px] text-amber-700" id="offline-queue-desc">Scans queued in device IndexedDB.</div>
+        </div>
+      </div>
+      <button onclick="syncOfflineQueue()" id="btn-sync-queue" class="px-2.5 py-1 rounded-xl bg-amber-600 text-white font-bold text-xs hover:bg-amber-700 shadow-sm flex items-center gap-1 transition-all">
+        <span class="material-symbols-outlined text-[14px]">sync</span> Sync to DB
+      </button>
+    </div>
+
+    <!-- Active Class Badge -->
+    <div class="p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex items-center justify-between text-xs font-semibold">
+      <span class="flex items-center gap-1.5 text-on-surface">
+        <span class="material-symbols-outlined text-primary text-[18px]">school</span>
+        <span id="scan-cohort-badge">B.Tech IT • 4th Yr • IT801</span>
+      </span>
+      <span class="text-primary flex items-center gap-0.5">
+        <span class="material-symbols-outlined text-[16px]">verified</span> Auto-Sync
+      </span>
+    </div>
+
+    <!-- Hidden Real File Input (Supports Multi-File Selection) -->
+    <input type="file" id="classroom-file-input" multiple accept="image/*" class="hidden" onchange="handleClassroomFiles(this.files)" />
+
+    <!-- Dropzone with Camera and Upload Icons -->
+    <div onclick="document.getElementById('classroom-file-input').click()" 
+         ondragover="event.preventDefault(); this.classList.add('border-primary', 'bg-primary-fixed/20')" 
+         ondragleave="this.classList.remove('border-primary', 'bg-primary-fixed/20')" 
+         ondrop="event.preventDefault(); this.classList.remove('border-primary', 'bg-primary-fixed/20'); handleClassroomFiles(event.dataTransfer.files)"
+         class="p-5 rounded-2xl bg-surface-container-lowest border-2 border-dashed border-primary/30 text-center cursor-pointer hover:border-primary active:scale-98 transition-all space-y-2 group">
+      <div class="flex items-center justify-center gap-2">
+        <div class="w-11 h-11 rounded-full bg-primary-fixed text-primary flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+          <span class="material-symbols-outlined text-[24px]">collections</span>
+        </div>
+        <div class="w-11 h-11 rounded-full bg-primary-fixed text-primary flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+          <span class="material-symbols-outlined text-[24px]">add_photo_alternate</span>
+        </div>
+      </div>
+      <div>
+        <h3 class="font-bold text-sm text-on-surface">Select Multiple Photos from Folder or File Manager</h3>
+        <p class="text-xs text-secondary max-w-xs mx-auto mt-0.5">Hold <kbd class="px-1.5 py-0.5 rounded bg-surface-container text-[10px] font-mono font-bold">Ctrl</kbd> or <kbd class="px-1.5 py-0.5 rounded bg-surface-container text-[10px] font-mono font-bold">Shift</kbd> (or multi-select on mobile) to pick multiple classroom photos.</p>
+      </div>
+      <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-primary font-semibold text-[11px]">
+        <span class="material-symbols-outlined text-[15px]">drive_folder_upload</span>
+        <span>📁 Click here to open computer files (Select Multiple)</span>
+      </span>
+    </div>
+
+    <!-- Quick Action Tool Buttons -->
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <button onclick="toggleWebcam()" class="p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-primary font-semibold text-on-surface flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-[18px] text-primary">videocam</span>
+        <span id="webcam-btn-text">Open Device Camera</span>
+      </button>
+      <button onclick="triggerSampleCapture()" class="p-2.5 rounded-xl bg-surface-container-lowest border border-outline-variant/30 hover:border-primary font-semibold text-on-surface flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-[18px] text-indigo-600">auto_fix_high</span>
+        <span>Stage 3 Demo Angles</span>
+      </button>
+    </div>
+
+    <!-- Live Webcam Stream View (with Front/Back toggle and Multiple Snapshot snapping) -->
+    <div id="webcam-container" class="hidden p-3 rounded-2xl bg-surface-container-lowest border border-primary/30 space-y-2.5 shadow-sm">
+      <div class="flex justify-between items-center text-xs">
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-on-surface flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping"></span> Live Camera
+          </span>
+          <span id="webcam-snap-count" class="hidden px-2 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">0 snapped</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- Toggle Switch for Front / Back Camera -->
+          <button onclick="switchCamera()" id="btn-switch-cam" type="button" class="px-2.5 py-1 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-[11px] border border-outline-variant/30 active:scale-95 transition-all flex items-center gap-1 text-primary" title="Switch between Front and Back camera">
+            <span class="material-symbols-outlined text-[16px]">cameraswitch</span>
+            <span id="cam-facing-label">Back Camera</span>
+          </button>
+          <button onclick="toggleWebcam()" type="button" class="text-secondary hover:text-on-surface text-[12px] font-semibold px-1 py-0.5">✕ Close</button>
+        </div>
+      </div>
+
+      <!-- Video Feed with Shutter Flash Effect & Floating Snapped Toast -->
+      <div class="relative w-full h-52 rounded-xl overflow-hidden bg-black flex items-center justify-center shadow-inner">
+        <video id="webcam-video" autoplay playsinline class="w-full h-full object-cover"></video>
+        <!-- Shutter Flash Overlay for capture feedback -->
+        <div id="webcam-flash-overlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-20"></div>
+        <!-- Snapped Notice Toast -->
+        <div id="webcam-snap-toast" class="absolute bottom-3 left-1/2 -translate-x-1/2 hidden px-3 py-1.5 bg-black/80 backdrop-blur-md text-white text-xs font-semibold rounded-full flex items-center gap-1.5 shadow-lg border border-white/20 pointer-events-none transition-all z-20">
+          <span class="material-symbols-outlined text-emerald-400 text-[16px]">check_circle</span>
+          <span id="webcam-snap-toast-text">Photo captured!</span>
+        </div>
+      </div>
+
+      <!-- Multi-Photo Camera Action Controls -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+        <!-- Snap & Add Photo Button (can be clicked multiple times) -->
+        <button onclick="captureWebcamSnapshot()" type="button" class="py-2.5 px-3 rounded-xl bg-primary text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:bg-primary-container active:scale-95 transition-all">
+          <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+          <span>Click Photo (Snap Multiple)</span>
+        </button>
+
+        <!-- Done Snapping / Finish Button -->
+        <button onclick="finishSnapping()" type="button" class="py-2.5 px-3 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md hover:bg-emerald-700 active:scale-95 transition-all">
+          <span class="material-symbols-outlined text-[18px]">done_all</span>
+          <span>Done Snapping (Review Photos)</span>
+        </button>
+      </div>
+      <p class="text-[11px] text-center text-secondary">
+        📸 Tip: Click multiple photos from different angles around the classroom to cover all students!
+      </p>
+    </div>
+
+    <!-- Staged Photos List (hidden until user selects or captures photos) -->
+    <div class="hidden space-y-2" id="staged-photos-container">
+      <div class="flex justify-between items-center text-xs px-1">
+        <span class="font-bold text-on-surface flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-primary text-[18px]">photo_library</span>
+          <span>Staged Photos for AI Verification (<span id="photo-count">0</span>)</span>
+        </span>
+        <div class="flex items-center gap-2">
+          <button onclick="document.getElementById('classroom-file-input').click()" class="text-primary font-semibold hover:underline flex items-center gap-0.5">
+            <span class="material-symbols-outlined text-[14px]">add</span> Add more
+          </button>
+          <span class="text-secondary">•</span>
+          <button onclick="clearStaged()" class="text-error font-semibold hover:underline">Clear all</button>
+        </div>
+      </div>
+
+      <div id="staged-photos-items" class="space-y-2"></div>
+    </div>
+
+    <!-- AI Trigger Callout (shown only when photos are staged) -->
+    <div id="staged-info-callout" class="hidden p-3 rounded-2xl bg-primary-fixed/40 border border-primary/20 flex items-center gap-2 text-xs">
+      <span class="material-symbols-outlined text-primary text-[20px]">info</span>
+      <span class="text-on-surface font-medium">Photos staged! Click the button below to process with the AI Face Engine.</span>
+    </div>
+
+    <!-- AI Trigger Button -->
+    <button id="btn-process-ai" onclick="runAiProcessing()" class="w-full py-3.5 rounded-2xl bg-primary text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-primary/25 hover:bg-primary-container active:scale-95 transition-all">
+      <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+      <span id="btn-process-text">Process Attendance with AI</span>
+    </button>
+
+    <!-- Real-Time WebSocket Scan Progress Box -->
+    <div id="scan-progress-box" class="hidden mt-3 p-4 rounded-2xl bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 shadow-sm transition-all duration-300">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-2">
+          <span class="relative flex h-2.5 w-2.5">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-600"></span>
+          </span>
+          <span id="scan-progress-label" class="text-xs font-bold text-indigo-900 dark:text-indigo-200">Analyzing Photo 1...</span>
+        </div>
+        <span id="scan-progress-percentage" class="text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">0%</span>
+      </div>
+      <!-- Progress Bar Track -->
+      <div class="w-full bg-indigo-100 dark:bg-indigo-900/40 rounded-full h-2.5 overflow-hidden">
+        <div id="scan-progress-bar" class="bg-gradient-to-r from-indigo-500 via-primary to-purple-600 h-2.5 rounded-full transition-all duration-300 ease-out" style="width: 0%"></div>
+      </div>
+      <div class="flex justify-between items-center text-[11px] text-indigo-600 dark:text-indigo-400 mt-2 font-medium">
+        <span id="scan-progress-detail">Extracting 128-D facial landmarks...</span>
+        <span id="scan-progress-fraction" class="font-mono font-semibold">0 / 0 scanned</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 4: ATTENDANCE REVIEW & OVERRIDE -->
+  <section id="screen-attendance-review" class="screen hidden flex-col w-full max-w-lg mx-auto p-4 pt-20 pb-28 space-y-4">
+    <!-- Meta Ribbon -->
+    <div class="flex items-center justify-between text-xs flex-wrap gap-2">
+      <div class="flex items-center gap-1.5">
+        <span class="px-2 py-0.5 rounded-full bg-primary-fixed text-primary font-bold uppercase text-[10px]">Step 2 of 2 • Draft Review</span>
+        <span id="review-ws-badge" class="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-semibold flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+          ⚡ WebSockets Active
+        </span>
+      </div>
+      <span id="review-date-badge" class="px-2 py-0.5 rounded-full bg-secondary-container text-secondary font-semibold text-[10px]">Session Review</span>
+    </div>
+
+    <div>
+      <h1 class="font-bold text-xl text-on-surface">Review &amp; Override</h1>
+      <p id="review-cohort-subtitle" class="text-xs text-secondary">Classroom AI Attendance Verification</p>
+    </div>
+
+    <!-- Recovered Draft Notification Banner -->
+    <div id="draft-recovered-banner" class="hidden p-3 rounded-2xl bg-primary-fixed/30 border border-primary/20 text-on-surface flex items-center justify-between text-xs animate-fadeIn">
+      <div class="flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary text-[20px]">restore</span>
+        <div>
+          <div class="font-bold text-primary">Restored Draft from Local Buffer</div>
+          <div class="text-[10px] text-secondary">Recovered unconfirmed attendance review from device IndexedDB.</div>
+        </div>
+      </div>
+      <button onclick="discardRecoveredDraft()" class="px-2.5 py-1 rounded-xl bg-surface-container hover:bg-error-container hover:text-error text-[10px] font-semibold transition-all">
+        Discard
+      </button>
+    </div>
+
+    <!-- EMPTY STATE: Shown when no photos have been scanned yet -->
+    <div id="review-empty-state" class="flex flex-col items-center justify-center p-8 text-center bg-surface-container-lowest rounded-2xl border border-outline-variant/30 space-y-4 my-2">
+      <div class="w-16 h-16 rounded-2xl bg-primary-fixed flex items-center justify-center text-primary shadow-inner">
+        <span class="material-symbols-outlined text-[36px]">center_focus_strong</span>
+      </div>
+      <div>
+        <h2 class="font-bold text-base text-on-surface">No Active Attendance Scan</h2>
+        <p class="text-xs text-secondary mt-1 max-w-xs leading-relaxed">
+          You haven't scanned or uploaded any classroom photos for this session yet. Take photos or upload images to detect student faces.
+        </p>
+      </div>
+      <div class="flex flex-col w-full gap-2 pt-2 max-w-xs">
+        <button onclick="navigateTo('take-attendance')" class="w-full py-3 rounded-xl bg-primary text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md hover:bg-primary-container active:scale-95 transition-all">
+          <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+          <span>Start Camera / Upload Scan</span>
+        </button>
+        <button onclick="startManualReviewMode()" class="w-full py-2.5 rounded-xl bg-surface-container text-on-surface font-semibold text-xs flex items-center justify-center gap-1.5 hover:bg-surface-container-high transition-all">
+          <span class="material-symbols-outlined text-[16px]">edit_note</span>
+          <span>Manual Roll-Call Roster</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- CONTENT STATE: Shown once photos are processed or manual mode started -->
+    <div id="review-content-state" class="hidden space-y-4">
+      <!-- Bento Diagnostics -->
+      <div class="grid grid-cols-4 gap-2 text-center text-xs">
+        <div class="p-2.5 rounded-2xl bg-surface-container-low border border-outline-variant/30">
+          <div class="text-secondary text-[10px]">Photos</div>
+          <div class="font-bold text-base mt-0.5" id="rev-stat-photos">0</div>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-surface-container-low border border-outline-variant/30">
+          <div class="text-primary text-[10px]">Faces</div>
+          <div class="font-bold text-base text-primary mt-0.5" id="rev-stat-faces">0</div>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-surface-container-low border border-outline-variant/30">
+          <div class="text-emerald-600 text-[10px]">Present</div>
+          <div class="font-bold text-base text-emerald-600 mt-0.5" id="rev-stat-present">0</div>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-surface-container-low border border-outline-variant/30">
+          <div class="text-error text-[10px]">Absent</div>
+          <div class="font-bold text-base text-error mt-0.5" id="rev-stat-absent">0</div>
+        </div>
+      </div>
+
+      <!-- Notice -->
+      <div class="p-3 rounded-2xl bg-primary-fixed/40 border border-primary/20 text-xs flex items-start gap-2">
+        <span class="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">touch_app</span>
+        <p><strong>Notice:</strong> Flip any toggle to override AI detection. Manually marked Present records save with <strong class="text-primary">1.0 confidence</strong>.</p>
+      </div>
+
+      <!-- Filter Tabs -->
+      <div class="grid grid-cols-3 p-1 bg-surface-container rounded-xl text-xs font-semibold text-center">
+        <button onclick="setFilter('all')" id="tab-all" class="py-1.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm">All (0)</button>
+        <button onclick="setFilter('present')" id="tab-present" class="py-1.5 rounded-lg text-secondary">Present (0)</button>
+        <button onclick="setFilter('absent')" id="tab-absent" class="py-1.5 rounded-lg text-secondary">Absent (0)</button>
+      </div>
+
+      <!-- Student Cards List -->
+      <div class="space-y-2.5" id="roster-list">
+        <!-- Dynamically rendered by renderReviewScreen() -->
+      </div>
+
+      <!-- Sticky Bottom Bar -->
+      <div class="sticky bottom-20 z-40 p-3.5 rounded-2xl bg-white/95 backdrop-blur-xl shadow-xl border border-outline-variant/30 space-y-2.5">
+        <div class="flex justify-between items-center text-xs">
+          <span class="font-bold text-on-surface" id="sticky-summary">0 Records</span>
+          <div class="flex items-center gap-1.5">
+            <span class="px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold text-[10px] flex items-center gap-1 border border-indigo-200 dark:border-indigo-800">
+              <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping"></span>
+              ⚡ WS Ready
+            </span>
+            <span class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[10px]">Draft Ready</span>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="navigateTo('take-attendance')" class="px-3 py-2.5 rounded-xl bg-surface-container text-xs font-bold text-on-surface">Retake</button>
+          <button id="btn-confirm-save" onclick="confirmToSupabase()" class="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md hover:bg-primary-container active:scale-98 transition-all flex items-center justify-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px]">check_circle</span>
+            <span id="btn-confirm-text">Confirm &amp; Save Attendance</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCREEN 5: ATTENDANCE HISTORY -->
+  <section id="screen-history" class="screen hidden flex-col w-full max-w-lg mx-auto p-4 pt-20 pb-24 space-y-3">
+    <!-- Back to Student Dashboard Button (only for students) -->
+    <div id="student-history-back-btn" class="hidden">
+      <button onclick="navigateTo('dashboard')" class="px-3 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs flex items-center gap-1.5 transition-all">
+        <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+        <span>Back to My Dashboard</span>
+      </button>
+    </div>
+
+    <div class="flex justify-between items-center text-xs">
+      <div>
+        <h1 class="font-bold text-lg text-on-surface">Attendance History</h1>
+        <div class="text-[11px] text-secondary">Verified records synced with Supabase</div>
+      </div>
+      <button onclick="alert('Exporting CSV of 4 records...')" class="px-3 py-1.5 rounded-xl bg-primary text-white font-bold text-[11px] flex items-center gap-1 shadow-sm">
+        <span class="material-symbols-outlined text-[14px]">download</span>
+        Export CSV
+      </button>
+    </div>
+
+    <div class="rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 overflow-hidden text-xs">
+      <table class="w-full text-left">
+        <thead class="bg-surface-container-low text-secondary text-[11px] border-b border-outline-variant/20">
+          <tr>
+            <th class="p-3">Student &amp; Date</th>
+            <th class="p-3">Status</th>
+            <th class="p-3">Cumulative Rate (%)</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant/20">
+          <tr>
+            <td class="p-3 font-semibold">Shinjan Paul (IT202601)</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">PRESENT</span></td>
+            <td class="p-3 font-bold text-secondary">86.5%</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-semibold">Biswajit Sinha (IT202602)</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">PRESENT</span></td>
+            <td class="p-3 font-bold text-secondary">91.2%</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-semibold">Priya Sharma (IT202603)</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">PRESENT</span></td>
+            <td class="p-3 font-bold text-secondary">89.0%</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-semibold">Ayush Nyas (IT202604)</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-full bg-error-container text-on-error-container text-[10px] font-bold">ABSENT</span></td>
+            <td class="p-3 text-secondary">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- SCREEN 6: FACE ID REGISTRY -->
+  <section id="screen-face-id" class="screen hidden flex-col w-full max-w-lg mx-auto p-4 pt-20 pb-24 space-y-3">
+    <div class="text-xs">
+      <h1 class="font-bold text-lg text-on-surface">Face ID Registry</h1>
+      <div class="text-[11px] text-secondary">Biometric ResNet 128-D Enrolment</div>
+    </div>
+
+    <div class="space-y-2 text-xs">
+      <div class="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex justify-between items-center">
+        <div>
+          <div class="font-bold">Shinjan Paul (IT202601)</div>
+          <div class="text-[10px] text-secondary">Centroid registered (3 photos)</div>
+        </div>
+        <span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">Registered</span>
+      </div>
+
+      <div class="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex justify-between items-center">
+        <div>
+          <div class="font-bold">Rohan Sen (IT202605)</div>
+          <div class="text-[10px] text-amber-800 font-semibold">No face embeddings</div>
+        </div>
+        <button onclick="alert('Open file picker to upload 1-5 photos for Rohan Sen')" class="px-2.5 py-1 rounded-xl bg-primary text-white font-bold text-[10px]">
+          + Enroll Face
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Bottom Navigation Bar (Hidden initially until logged in) -->
+  <nav id="bottom-nav" class="hidden fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)]">
+    <div class="flex items-center justify-around h-16 px-4">
+      <button onclick="navigateTo('dashboard')" id="nav-dashboard" class="flex flex-col items-center text-primary font-semibold text-xs">
+        <span class="material-symbols-outlined text-[20px]">dashboard</span>
+        <span>Dashboard</span>
+      </button>
+
+      <button onclick="navigateTo('take-attendance')" id="nav-take-attendance" class="relative -top-2 flex flex-col items-center">
+        <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center shadow-lg shadow-primary/30 active:scale-95 transition-all">
+          <span class="material-symbols-outlined text-[24px]">center_focus_strong</span>
+        </div>
+        <span class="text-[11px] text-primary font-bold mt-1">Scan</span>
+      </button>
+
+      <button onclick="navigateTo('attendance-review')" id="nav-attendance-review" class="flex flex-col items-center text-secondary text-xs hover:text-on-surface">
+        <span class="material-symbols-outlined text-[20px]">fact_check</span>
+        <span>Review</span>
+      </button>
+
+      <button onclick="navigateTo('history')" id="nav-history" class="flex flex-col items-center text-secondary text-xs hover:text-on-surface">
+        <span class="material-symbols-outlined text-[20px]">history</span>
+        <span>History</span>
+      </button>
+
+      <button onclick="navigateTo('face-id')" id="nav-face-id" class="flex flex-col items-center text-secondary text-xs hover:text-on-surface">
+        <span class="material-symbols-outlined text-[20px]">person_search</span>
+        <span>Face ID</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Core Interactive Script with Real Django Backend Connection -->
+  <script>
+    const NGROK_HOST = 'famished-savor-seventeen.ngrok-free.dev';
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isGitHub = window.location.hostname.includes('github.io');
+    const isTunnel = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
+
+    let BACKEND_BASE = 'http://127.0.0.1:8000';
+    if (isGitHub) {
+      BACKEND_BASE = `https://${NGROK_HOST}`;
+    } else if (isTunnel) {
+      BACKEND_BASE = window.location.origin;
+    } else if (isLocal || window.location.protocol === 'file:') {
+      BACKEND_BASE = 'http://127.0.0.1:8000';
+    } else if (window.location.port === '8080' || window.location.port === '8000') {
+      BACKEND_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+    } else {
+      BACKEND_BASE = window.location.origin;
+    }
+    const API_BASE = `${BACKEND_BASE}/api`;
+    let activeTab = 'dashboard';
+
+    function getMediaUrl(path) {
+      if (!path) return '';
+      // On GitHub Pages, serve student face photos directly from repository static folder 24/7 (offline ready!)
+      if (isGitHub) {
+        let clean = path;
+        if (clean.startsWith('http://') || clean.startsWith('https://')) {
+          try {
+            clean = new URL(clean).pathname;
+          } catch(e) {}
+        }
+        clean = clean.replace(/^\/+/, '');
+        if (!clean.startsWith('media/')) clean = 'media/' + clean;
+        return './' + clean;
+      }
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        try {
+          const u = new URL(path);
+          return `${BACKEND_BASE}${u.pathname}`;
+        } catch(e) {
+          return path;
+        }
+      }
+      if (path.startsWith('/')) return `${BACKEND_BASE}${path}`;
+      return `${BACKEND_BASE}/${path}`;
+    }
+
+    // ==============================================================
+    // INDEXEDDB CLIENT-SIDE OFFLINE BUFFER MANAGER
+    // ==============================================================
+    const OfflineDB = {
+      dbName: 'VeriFaceOfflineDB',
+      dbVersion: 1,
+      db: null,
+
+      async init() {
+        if (!('indexedDB' in window)) {
+          console.warn('IndexedDB is not supported in this browser environment');
+          return null;
+        }
+        return new Promise((resolve) => {
+          const req = indexedDB.open(this.dbName, this.dbVersion);
+          req.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('roster_cache')) {
+              db.createObjectStore('roster_cache', { keyPath: 'key' });
+            }
+            if (!db.objectStoreNames.contains('active_draft')) {
+              db.createObjectStore('active_draft', { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains('offline_scans')) {
+              db.createObjectStore('offline_scans', { keyPath: 'id', autoIncrement: true });
+            }
+            if (!db.objectStoreNames.contains('offline_confirms')) {
+              db.createObjectStore('offline_confirms', { keyPath: 'id', autoIncrement: true });
+            }
+          };
+          req.onsuccess = (e) => {
+            this.db = e.target.result;
+            console.log('[IndexedDB] VeriFaceOfflineDB initialized successfully.');
+            resolve(this.db);
+          };
+          req.onerror = (e) => {
+            console.warn('[IndexedDB] Open error:', e.target.error);
+            resolve(null);
+          };
+        });
+      },
+
+      async setRoster(key, data) {
+        if (!this.db) return false;
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('roster_cache', 'readwrite');
+            const store = tx.objectStore('roster_cache');
+            store.put({ key, data, timestamp: Date.now() });
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+          } catch(e) { resolve(false); }
+        });
+      },
+
+      async getRoster(key) {
+        if (!this.db) return null;
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('roster_cache', 'readonly');
+            const store = tx.objectStore('roster_cache');
+            const req = store.get(key);
+            req.onsuccess = () => resolve(req.result ? req.result.data : null);
+            req.onerror = () => resolve(null);
+          } catch(e) { resolve(null); }
+        });
+      },
+
+      async saveActiveDraft(draft) {
+        if (!this.db || !draft) return false;
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('active_draft', 'readwrite');
+            const store = tx.objectStore('active_draft');
+            store.put({ id: 'current_draft', draft, timestamp: Date.now() });
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+          } catch(e) { resolve(false); }
+        });
+      },
+
+      async getActiveDraft() {
+        if (!this.db) return null;
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('active_draft', 'readonly');
+            const store = tx.objectStore('active_draft');
+            const req = store.get('current_draft');
+            req.onsuccess = () => resolve(req.result ? req.result.draft : null);
+            req.onerror = () => resolve(null);
+          } catch(e) { resolve(null); }
+        });
+      },
+
+      async clearActiveDraft() {
+        if (!this.db) return false;
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('active_draft', 'readwrite');
+            const store = tx.objectStore('active_draft');
+            store.delete('current_draft');
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+          } catch(e) { resolve(false); }
+        });
+      },
+
+      async queueOfflineScan(classId, subjectId, files) {
+        if (!this.db) return null;
+        const photoBlobs = [];
+        for (const file of files) {
+          photoBlobs.push({
+            name: file.name,
+            type: file.type,
+            blob: file instanceof Blob ? file : new Blob([file], { type: file.type || 'image/jpeg' })
+          });
+        }
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('offline_scans', 'readwrite');
+            const store = tx.objectStore('offline_scans');
+            const req = store.add({
+              classId,
+              subjectId,
+              photos: photoBlobs,
+              timestamp: Date.now(),
+              status: 'pending'
+            });
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+          } catch(e) { resolve(null); }
+        });
+      },
+
+      async getQueuedScans() {
+        if (!this.db) return [];
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('offline_scans', 'readonly');
+            const store = tx.objectStore('offline_scans');
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+          } catch(e) { resolve([]); }
+        });
+      },
+
+      async removeQueuedScan(id) {
+        if (!this.db) return false;
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('offline_scans', 'readwrite');
+            const store = tx.objectStore('offline_scans');
+            store.delete(id);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+          } catch(e) { resolve(false); }
+        });
+      },
+
+      async queueOfflineConfirm(payload) {
+        if (!this.db) return null;
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('offline_confirms', 'readwrite');
+            const store = tx.objectStore('offline_confirms');
+            const req = store.add({
+              payload,
+              timestamp: Date.now(),
+              status: 'pending'
+            });
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(null);
+          } catch(e) { resolve(null); }
+        });
+      },
+
+      async getQueuedConfirms() {
+        if (!this.db) return [];
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('offline_confirms', 'readonly');
+            const store = tx.objectStore('offline_confirms');
+            const req = store.getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => resolve([]);
+          } catch(e) { resolve([]); }
+        });
+      },
+
+      async removeQueuedConfirm(id) {
+        if (!this.db) return false;
+        return new Promise((resolve) => {
+          try {
+            const tx = this.db.transaction('offline_confirms', 'readwrite');
+            const store = tx.objectStore('offline_confirms');
+            store.delete(id);
+            tx.oncomplete = () => resolve(true);
+            tx.onerror = () => resolve(false);
+          } catch(e) { resolve(false); }
+        });
+      }
+    };
+
+    function updateNetworkStatus(isOnline) {
+      const pulseDot = document.getElementById('header-pulse-dot');
+      const connStatus = document.getElementById('header-connection-status');
+      const dbStatus = document.getElementById('header-db-status');
+      const statusElem = document.getElementById('faculty-fetch-status');
+      const studentFacStatus = document.getElementById('student-faculty-status');
+
+      if (isOnline) {
+        if (pulseDot) pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
+        if (connStatus) connStatus.textContent = isGitHub ? 'Cloud Web • 24/7 Active' : 'API Live • 127.0.0.1:8000';
+        if (dbStatus) dbStatus.textContent = isGitHub ? 'GitHub Pages 24/7' : 'Django Live • DB Connected';
+        if (statusElem && state.teachers.length) statusElem.textContent = `${state.teachers.length} Live Professors in DB`;
+        if (studentFacStatus && state.teachers.length) studentFacStatus.textContent = `${state.teachers.length} Live Professors in DB`;
+      } else {
+        if (pulseDot) pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500';
+        if (connStatus) connStatus.textContent = 'Cloud Web • 24/7 Active';
+        if (dbStatus) dbStatus.textContent = '24/7 Cloud Access Active';
+        if (statusElem) statusElem.textContent = `${state.teachers.length} Faculty Profiles`;
+        if (studentFacStatus) studentFacStatus.textContent = `${state.teachers.length} Faculty Profiles`;
+      }
+      checkOfflineQueueStatus();
+    }
+
+    async function checkOfflineQueueStatus() {
+      try {
+        const queuedScans = await OfflineDB.getQueuedScans();
+        const queuedConfirms = await OfflineDB.getQueuedConfirms();
+        const totalQueued = queuedScans.length + queuedConfirms.length;
+
+        const banner = document.getElementById('offline-queue-banner');
+        const title = document.getElementById('offline-queue-title');
+        const desc = document.getElementById('offline-queue-desc');
+        const dbStatus = document.getElementById('header-db-status');
+
+        if (totalQueued > 0) {
+          if (banner) banner.classList.remove('hidden');
+          if (title) title.textContent = `Offline Buffer: ${totalQueued} Item(s) Queued`;
+          if (desc) desc.textContent = `${queuedScans.length} Scan(s), ${queuedConfirms.length} Attendance Log(s) stored in IndexedDB.`;
+          if (dbStatus) dbStatus.textContent = `IndexedDB Buffer (${totalQueued} Queued)`;
+        } else {
+          if (banner) banner.classList.add('hidden');
+        }
+      } catch(e) {
+        console.warn('Queue check notice:', e);
+      }
+    }
+
+    async function syncOfflineQueue() {
+      const syncBtn = document.getElementById('btn-sync-queue');
+      if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.innerHTML = '<span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> Syncing...';
+      }
+
+      try {
+        const queuedScans = await OfflineDB.getQueuedScans();
+        const queuedConfirms = await OfflineDB.getQueuedConfirms();
+        let syncedCount = 0;
+
+        // 1. Process queued scans through Django
+        for (const scan of queuedScans) {
+          const formData = new FormData();
+          formData.append('class_id', scan.classId);
+          if (scan.subjectId) formData.append('subject_id', scan.subjectId);
+          scan.photos.forEach(p => {
+            formData.append('photos', p.blob, p.name);
+          });
+
+          const res = await fetch(`${API_BASE}/attendance/process-photos/`, {
+            method: 'POST',
+            body: formData
+          });
+
+          if (res.ok) {
+            const draft = await res.json();
+            await OfflineDB.removeQueuedScan(scan.id);
+            syncedCount++;
+            renderReviewScreen(draft);
+            navigateTo('attendance-review');
+          }
+        }
+
+        // 2. Commit queued attendance confirmations to central database
+        for (const conf of queuedConfirms) {
+          const res = await fetch(`${API_BASE}/attendance/confirm/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(conf.payload)
+          });
+          if (res.ok) {
+            await OfflineDB.removeQueuedConfirm(conf.id);
+            syncedCount++;
+          }
+        }
+
+        await checkOfflineQueueStatus();
+        if (syncedCount > 0) {
+          alert(`IndexedDB Offline Buffer:\nSuccessfully synchronized ${syncedCount} queued item(s) to Django!`);
+        }
+      } catch(err) {
+        console.warn('Sync failed:', err);
+        alert('Could not synchronize offline buffer right now: ' + err.message + '\n\nAll items remain safely preserved in device IndexedDB.');
+      } finally {
+        if (syncBtn) {
+          syncBtn.disabled = false;
+          syncBtn.innerHTML = '<span class="material-symbols-outlined text-[14px]">sync</span> Sync to DB';
+        }
+      }
+    }
+
+    function saveDraftToIndexedDB() {
+      if (!state.attendanceDraft) return;
+      const presentList = [];
+      const absentList = [];
+      document.querySelectorAll('.student-item').forEach(card => {
+        const isPresent = card.getAttribute('data-status') === 'present';
+        const stId = parseInt(card.getAttribute('data-student-id'));
+        const uname = card.getAttribute('data-name');
+        const stObj = (state.students || []).find(s => s.id === stId || s.username === uname) || { id: stId, username: uname, name: uname };
+        const stItem = {
+          id: stId,
+          username: stObj.username,
+          name: `${stObj.first_name || ''} ${stObj.last_name || ''}`.trim() || stObj.name || uname,
+          roll_number: stObj.roll_number,
+          profile_picture: stObj.profile_picture
+        };
+        if (isPresent) {
+          presentList.push(stItem);
+        } else {
+          absentList.push(stItem);
+        }
+      });
+      state.attendanceDraft.present_students = presentList;
+      state.attendanceDraft.absent_students = absentList;
+      state.attendanceDraft.present_count = presentList.length;
+      state.attendanceDraft.absent_count = absentList.length;
+      OfflineDB.saveActiveDraft(state.attendanceDraft);
+    }
+
+    async function discardRecoveredDraft() {
+      await OfflineDB.clearActiveDraft();
+      state.attendanceDraft = null;
+      const banner = document.getElementById('draft-recovered-banner');
+      if (banner) banner.classList.add('hidden');
+      const emptyState = document.getElementById('review-empty-state');
+      const contentState = document.getElementById('review-content-state');
+      if (emptyState) emptyState.classList.remove('hidden');
+      if (contentState) contentState.classList.add('hidden');
+    }
+
+    function generateDefaultAttendanceLogs(studentsList) {
+      const cloudDates = [
+        '2026-09-21', '2026-09-23', '2026-09-25', '2026-09-28', '2026-09-30',
+        '2026-10-05', '2026-10-07', '2026-10-09', '2026-10-14', '2026-10-19'
+      ];
+      const cyberDates = [
+        '2026-09-22', '2026-09-24', '2026-09-29', '2026-10-01',
+        '2026-10-06', '2026-10-08', '2026-10-13', '2026-10-15'
+      ];
+      const absences = {
+        'sourjya_saha': { 'IT801': new Set(['2026-09-28', '2026-10-09']), 'IT803': new Set(['2026-09-24']) },
+        'shinjan_paul': { 'IT801': new Set(['2026-09-25']), 'IT803': new Set(['2026-10-06']) },
+        'ayush_nyas': { 'IT801': new Set(['2026-10-05']), 'IT803': new Set(['2026-10-01']) },
+        'hammad_akhter': { 'IT801': new Set(['2026-09-23', '2026-10-07']), 'IT803': new Set(['2026-10-13']) },
+        'biswajit_sinha': { 'IT801': new Set(['2026-09-21', '2026-09-30', '2026-10-14']), 'IT803': new Set(['2026-09-22', '2026-10-08']) }
+      };
+
+      const logs = [];
+      let logId = 1;
+      (studentsList || []).forEach(s => {
+        const ukey = (s.username || '').toLowerCase();
+        const userAbs = absences[ukey] || { 'IT801': new Set(), 'IT803': new Set() };
+
+        cloudDates.forEach(d => {
+          const isAbs = userAbs['IT801'] ? userAbs['IT801'].has(d) : false;
+          logs.push({
+            id: logId++,
+            student: s.id,
+            student_name: s.username,
+            student_full_name: `${s.first_name} ${s.last_name}`,
+            student_roll: s.roll_number,
+            date: d,
+            subject: 1,
+            subject_code: 'IT801',
+            subject_name: 'Cloud Computing & Distributed Systems',
+            status: isAbs ? 'ABSENT' : 'PRESENT',
+            verification_method: 'FACE_RECOGNITION',
+            confidence_score: isAbs ? 0.0 : 0.95
+          });
+        });
+
+        cyberDates.forEach(d => {
+          const isAbs = userAbs['IT803'] ? userAbs['IT803'].has(d) : false;
+          logs.push({
+            id: logId++,
+            student: s.id,
+            student_name: s.username,
+            student_full_name: `${s.first_name} ${s.last_name}`,
+            student_roll: s.roll_number,
+            date: d,
+            subject: 3,
+            subject_code: 'IT803',
+            subject_name: 'Cyber & Information Security',
+            status: isAbs ? 'ABSENT' : 'PRESENT',
+            verification_method: 'FACE_RECOGNITION',
+            confidence_score: isAbs ? 0.0 : 0.96
+          });
+        });
+
+        // 19th Session: IT802 Machine Learning & Pattern Recognition (Prof. Rituparna Sinha)
+        const isPresIT802 = ukey.includes('ayush');
+        logs.push({
+          id: logId++,
+          student: s.id,
+          student_name: s.username,
+          student_full_name: `${s.first_name} ${s.last_name}`,
+          student_roll: s.roll_number,
+          date: '2026-10-26',
+          subject: 2,
+          subject_code: 'IT802',
+          subject_name: 'Machine Learning & Pattern Recognition',
+          status: isPresIT802 ? 'PRESENT' : 'ABSENT',
+          verification_method: 'FACE_RECOGNITION',
+          confidence_score: isPresIT802 ? 0.94 : 0.0
+        });
+      });
+      logs.sort((a, b) => b.date.localeCompare(a.date));
+      return logs;
+    }
+
+    const defaultStudents = [
+      {
+        id: 1,
+        username: 'shinjan_paul',
+        first_name: 'Shinjan',
+        last_name: 'Paul',
+        roll_number: 'IT202601',
+        department: 'Information Technology',
+        student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: '/media/profiles/ShinjanPaul.jpeg',
+        has_registered_face: true,
+        attendance_stats: {
+          total_days: 19,
+          present_days: 16,
+          absent_days: 3,
+          percentage: 84.2,
+          by_subject: {
+            'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 9, percentage: 90.0, profName: 'Prof. Sudipta Bhadra' },
+            'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 7, percentage: 87.5, profName: 'Prof. Ananya Mukherjee' },
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+          }
+        }
+      },
+      {
+        id: 2,
+        username: 'Sourjya_Saha',
+        first_name: 'Sourjya',
+        last_name: 'Saha',
+        roll_number: 'IT2354016',
+        department: 'Information Technology',
+        student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: null,
+        has_registered_face: true,
+        attendance_stats: {
+          total_days: 19,
+          present_days: 15,
+          absent_days: 4,
+          percentage: 78.9,
+          by_subject: {
+            'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 8, percentage: 80.0, profName: 'Prof. Sudipta Bhadra' },
+            'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 7, percentage: 87.5, profName: 'Prof. Ananya Mukherjee' },
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+          }
+        }
+      },
+      {
+        id: 3,
+        username: 'ayush_nyas',
+        first_name: 'Ayush',
+        last_name: 'Nyas',
+        roll_number: 'IT202604',
+        department: 'Information Technology',
+        student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: '/media/profiles/Ayush.jpeg',
+        has_registered_face: true,
+        attendance_stats: {
+          total_days: 19,
+          present_days: 17,
+          absent_days: 2,
+          percentage: 89.5,
+          by_subject: {
+            'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 9, percentage: 90.0, profName: 'Prof. Sudipta Bhadra' },
+            'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 7, percentage: 87.5, profName: 'Prof. Ananya Mukherjee' },
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 1, percentage: 100.0, profName: 'Prof. Rituparna Sinha' }
+          }
+        }
+      },
+      {
+        id: 4,
+        username: 'hammad_akhter',
+        first_name: 'Hammad',
+        last_name: 'Akhter',
+        roll_number: 'IT202603',
+        department: 'Information Technology',
+        student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: null,
+        has_registered_face: true,
+        attendance_stats: {
+          total_days: 19,
+          present_days: 15,
+          absent_days: 4,
+          percentage: 78.9,
+          by_subject: {
+            'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 8, percentage: 80.0, profName: 'Prof. Sudipta Bhadra' },
+            'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 7, percentage: 87.5, profName: 'Prof. Ananya Mukherjee' },
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+          }
+        }
+      },
+      {
+        id: 5,
+        username: 'biswajit_sinha',
+        first_name: 'Biswajit',
+        last_name: 'Sinha',
+        roll_number: 'IT202602',
+        department: 'Information Technology',
+        student_class_name: 'B.Tech IT 4th Yr - Sec A',
+        profile_picture: '/media/profiles/4.jpeg',
+        has_registered_face: true,
+        attendance_stats: {
+          total_days: 19,
+          present_days: 13,
+          absent_days: 6,
+          percentage: 68.4,
+          by_subject: {
+            'IT801': { code: 'IT801', name: 'Cloud Computing & Distributed Systems', total: 10, present: 7, percentage: 70.0, profName: 'Prof. Sudipta Bhadra' },
+            'IT803': { code: 'IT803', name: 'Cyber & Information Security', total: 8, present: 6, percentage: 75.0, profName: 'Prof. Ananya Mukherjee' },
+            'IT802': { code: 'IT802', name: 'Machine Learning & Pattern Recognition', total: 1, present: 0, percentage: 0.0, profName: 'Prof. Rituparna Sinha' }
+          }
+        }
+      }
+    ];
+
+    // Application state
+    let state = {
+      teachers: [
+        { id: 1, username: 'prof_sudipta', first_name: 'Sudipta', last_name: 'Bhadra', department: 'Information Technology' },
+        { id: 2, username: 'prof_ananya', first_name: 'Ananya', last_name: 'Mukherjee', department: 'Information Technology' },
+        { id: 3, username: 'prof_rituparna', first_name: 'Rituparna', last_name: 'Sinha', department: 'Information Technology' },
+        { id: 4, username: 'prof_rajesh', first_name: 'Rajesh', last_name: 'Sharma', department: 'AI & Data Science' },
+        { id: 5, username: 'prof_debashis', first_name: 'Debashis', last_name: 'Roy', department: 'Computer Science' }
+      ],
+      students: defaultStudents,
+      classes: [],
+      attendanceLogs: generateDefaultAttendanceLogs(defaultStudents),
+      currentTeacher: null,
+      currentUser: null,
+      currentUserRole: 'teacher',
+      selectedStudentFaculty: 'prof_ananya',
+      selectedStudent: defaultStudents[0],
+      selectedClassId: 1,
+      attendanceDraft: null,
+      stagedFiles: [],
+      socket: null,
+      wsConnected: false
+    };
+
+    // Real-Time WebSocket Toast Notification System
+    function showLiveToast({ title, message, type = 'info', icon = 'notifications', duration = 5000 }) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const typeStyles = {
+        success: 'bg-emerald-50 dark:bg-emerald-950/90 border-emerald-300 dark:border-emerald-800 text-emerald-900 dark:text-emerald-100',
+        warning: 'bg-amber-50 dark:bg-amber-950/90 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-100',
+        info: 'bg-indigo-50 dark:bg-indigo-950/90 border-indigo-300 dark:border-indigo-800 text-indigo-900 dark:text-indigo-100'
+      };
+
+      const iconColors = {
+        success: 'text-emerald-600 dark:text-emerald-400',
+        warning: 'text-amber-600 dark:text-amber-400',
+        info: 'text-indigo-600 dark:text-indigo-400'
+      };
+
+      toast.className = `pointer-events-auto p-4 rounded-2xl shadow-xl border flex items-start gap-3 transition-all duration-300 transform translate-y-[-10px] opacity-0 backdrop-blur-md ${typeStyles[type] || typeStyles.info}`;
+      toast.innerHTML = `
+        <span class="material-symbols-outlined text-[24px] shrink-0 mt-0.5 ${iconColors[type] || iconColors.info}">${icon}</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-bold text-xs tracking-tight">${title}</div>
+          <div class="text-[11px] opacity-90 mt-0.5 leading-snug break-words">${message}</div>
+        </div>
+        <button onclick="this.parentElement.remove()" class="text-xs opacity-60 hover:opacity-100 shrink-0 p-1">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      `;
+
+      container.appendChild(toast);
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-[-10px]', 'opacity-0');
+        toast.classList.add('translate-y-0', 'opacity-100');
+      });
+
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.add('opacity-0', 'translate-y-[-10px]');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, duration);
+    }
+
+    // Real-Time WebSocket Manager
+    function updateWebSocketStatus(status) {
+      const pill = document.getElementById('header-ws-pill');
+      const dot = document.getElementById('header-ws-dot');
+      const text = document.getElementById('header-ws-text');
+      const rightBadge = document.getElementById('header-ws-right');
+      const reviewBadge = document.getElementById('review-ws-badge');
+
+      if (status === 'connected') {
+        state.wsConnected = true;
+        if (pill) {
+          pill.className = 'inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded-full border border-emerald-200 dark:border-emerald-800';
+          if (dot) dot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping';
+          if (text) text.textContent = 'WS Live';
+        }
+        if (rightBadge) {
+          rightBadge.className = 'text-emerald-600 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-1';
+          rightBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> ⚡ WS Live';
+        }
+        if (reviewBadge) {
+          reviewBadge.className = 'px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-semibold flex items-center gap-1';
+          reviewBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> ⚡ WebSockets Active';
+        }
+      } else if (status === 'connecting') {
+        state.wsConnected = false;
+        if (pill) {
+          pill.className = 'inline-flex items-center gap-1 text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.2 rounded-full border border-amber-200 dark:border-amber-800';
+          if (dot) dot.className = 'w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse';
+          if (text) text.textContent = 'WS Connecting...';
+        }
+        if (rightBadge) {
+          rightBadge.className = 'text-amber-600 dark:text-amber-400 text-[10px] font-bold flex items-center gap-1';
+          rightBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> ⚡ WS Connecting...';
+        }
+        if (reviewBadge) {
+          reviewBadge.className = 'px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[10px] font-semibold flex items-center gap-1';
+          reviewBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span> ⚡ WS Reconnecting...';
+        }
+      } else {
+        state.wsConnected = false;
+        if (pill) {
+          pill.className = 'inline-flex items-center gap-1 text-[10px] font-semibold text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.2 rounded-full border border-gray-200 dark:border-gray-700';
+          if (dot) dot.className = 'w-1.5 h-1.5 rounded-full bg-gray-400';
+          if (text) text.textContent = 'WS Offline';
+        }
+        if (rightBadge) {
+          rightBadge.className = 'text-gray-500 text-[10px] font-medium flex items-center gap-1';
+          rightBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> ⚡ WS Offline';
+        }
+        if (reviewBadge) {
+          reviewBadge.className = 'px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 text-[10px] font-medium flex items-center gap-1';
+          reviewBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span> ⚡ WS Offline';
+        }
+      }
+    }
+
+    let wsReconnectTimeout = null;
+
+    function initWebSocket() {
+      if (state.socket && (state.socket.readyState === WebSocket.OPEN || state.socket.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
+
+      updateWebSocketStatus('connecting');
+
+      const isGitHubHost = window.location.hostname.includes('github.io');
+      const isTunnelHost = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
+      const protocol = (window.location.protocol === 'https:' || isGitHubHost || isTunnelHost) ? 'wss:' : 'ws:';
+      let host = '127.0.0.1:8000';
+      if (isGitHubHost) {
+        host = 'famished-savor-seventeen.ngrok-free.dev';
+      } else if (isTunnelHost) {
+        host = window.location.host;
+      } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        host = '127.0.0.1:8000';
+      } else if (window.location.hostname) {
+        host = `${window.location.hostname}:8000`;
+      }
+      const wsUrl = `${protocol}//${host}/ws/attendance/`;
+
+      try {
+        state.socket = new WebSocket(wsUrl);
+
+        state.socket.onopen = () => {
+          updateWebSocketStatus('connected');
+          console.log('⚡ Connected to VeriFace WebSocket:', wsUrl);
+
+          if (state.currentUser && (state.currentUser.role === 'STUDENT' || state.currentUserRole === 'student')) {
+            subscribeStudentToWS(state.currentUser.id);
+          }
+        };
+
+        state.socket.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            handleWebSocketMessage(data);
+          } catch (e) {
+            console.warn('Error parsing WS message:', e);
+          }
+        };
+
+        state.socket.onerror = (err) => {
+          console.warn('WebSocket connection notice:', err);
+          updateWebSocketStatus('offline');
+        };
+
+        state.socket.onclose = () => {
+          updateWebSocketStatus('offline');
+          clearTimeout(wsReconnectTimeout);
+          wsReconnectTimeout = setTimeout(initWebSocket, 3000);
+        };
+      } catch (err) {
+        console.warn('WebSocket init error:', err);
+        updateWebSocketStatus('offline');
+        clearTimeout(wsReconnectTimeout);
+        wsReconnectTimeout = setTimeout(initWebSocket, 4000);
+      }
+    }
+
+    function subscribeStudentToWS(studentId) {
+      if (state.socket && state.socket.readyState === WebSocket.OPEN) {
+        state.socket.send(JSON.stringify({
+          action: 'subscribe_student',
+          student_id: studentId
+        }));
+      }
+    }
+
+    function handleWebSocketMessage(data) {
+      if (data.type === 'scan_progress') {
+        onScanProgressReceived(data);
+      } else if (data.type === 'attendance_confirmed') {
+        onAttendanceConfirmedReceived(data);
+      }
+    }
+
+    function onScanProgressReceived(data) {
+      // 1. Update Inline Progress Box
+      const box = document.getElementById('scan-progress-box');
+      const label = document.getElementById('scan-progress-label');
+      const pctBadge = document.getElementById('scan-progress-percentage');
+      const bar = document.getElementById('scan-progress-bar');
+      const detail = document.getElementById('scan-progress-detail');
+      const fraction = document.getElementById('scan-progress-fraction');
+      const btnText = document.getElementById('btn-process-text');
+
+      // 2. Update Full-Screen AI Scanning Modal
+      const modal = document.getElementById('ai-scan-modal');
+      const modalTitle = document.getElementById('modal-scan-title');
+      const modalSubtitle = document.getElementById('modal-scan-subtitle');
+      const modalFraction = document.getElementById('modal-scan-fraction');
+      const modalPct = document.getElementById('modal-scan-percentage');
+      const modalBar = document.getElementById('modal-scan-bar');
+      const modalFaces = document.getElementById('modal-scan-faces');
+      const modalStatus = document.getElementById('modal-scan-status');
+
+      if (modal) modal.classList.remove('hidden');
+      if (box) box.classList.remove('hidden');
+
+      const pct = data.percentage || 0;
+      if (bar) bar.style.width = `${pct}%`;
+      if (pctBadge) pctBadge.textContent = `${pct}%`;
+      if (fraction) fraction.textContent = `${data.current} / ${data.total} scanned`;
+
+      if (modalBar) modalBar.style.width = `${pct}%`;
+      if (modalPct) modalPct.textContent = `${pct}%`;
+      if (modalFraction) modalFraction.textContent = `Photo ${data.current} of ${data.total}`;
+      if (modalFaces) modalFaces.textContent = `${data.faces_detected || 0} faces in frame`;
+
+      if (pct >= 100) {
+        if (label) label.textContent = '✅ Analysis Complete! Preparing Roster...';
+        if (detail) detail.textContent = data.message || 'All facial landmarks verified against database.';
+        if (btnText) btnText.textContent = 'AI Processing Complete!';
+        if (modalTitle) modalTitle.textContent = '✅ Analysis Complete!';
+        if (modalSubtitle) modalSubtitle.textContent = 'All classroom photos analyzed & matched.';
+        if (modalStatus) modalStatus.textContent = 'Finalizing Roster...';
+      } else {
+        if (label) label.textContent = `Analyzing Photo ${data.current} of ${data.total}...`;
+        if (detail) detail.textContent = `${data.faces_detected || 0} faces detected in frame. Computing 128-D Euclidean distances...`;
+        if (btnText) btnText.textContent = `Scanning Photo ${data.current}/${data.total} (${pct}%)...`;
+        if (modalTitle) modalTitle.textContent = `Scanning Photo ${data.current} of ${data.total}...`;
+        if (modalSubtitle) modalSubtitle.textContent = `Angle ${data.current} analyzed with dlib 128-D biometrics`;
+        if (modalStatus) modalStatus.textContent = `${pct}% Scanned`;
+      }
+    }
+
+    function onAttendanceConfirmedReceived(data) {
+      const currentUserId = state.currentUser ? state.currentUser.id : null;
+      const isStudent = state.currentUserRole === 'student' || (state.currentUser && state.currentUser.role === 'STUDENT');
+
+      if (isStudent && currentUserId) {
+        const records = data.records || [];
+        const myRecord = records.find(r => r.student_id === currentUserId);
+
+        if (myRecord) {
+          const isPresent = myRecord.status === 'PRESENT';
+          showLiveToast({
+            title: isPresent ? '🎉 Live Attendance: PRESENT' : '⚠️ Live Attendance: ABSENT',
+            message: `${data.subject_name || 'Class Session'} (${data.date || 'Today'}) confirmed by ${data.teacher_name || 'Faculty'}. Your attendance score has been updated live!`,
+            type: isPresent ? 'success' : 'warning',
+            icon: isPresent ? 'verified_user' : 'cancel',
+            duration: 8000
+          });
+
+          // Reload backend data dynamically to update percentage without page reload
+          loadBackendData();
+        }
+      } else if (!isStudent) {
+        // Teacher / Faculty view notification
+        showLiveToast({
+          title: '⚡ Live Attendance Confirmed',
+          message: `${data.subject_name || 'Class Session'} (${data.date || 'Today'}): ${data.records ? data.records.length : 0} student records committed to central DB.`,
+          type: 'info',
+          icon: 'cloud_done',
+          duration: 5000
+        });
+        loadBackendData();
+      }
+    }
+
+    // University academic configurations for each faculty member
+    const TEACHER_CONFIG = {
+      'prof_sudipta': {
+        name: 'Prof. Sudipta Bhadra',
+        dept: 'Dept. of Information Technology',
+        initials: 'SB',
+        classId: 1,
+        subjectId: 1,
+        cohort: 'B.Tech IT - 4th Year - Sec A',
+        course: 'Cloud Computing & Distributed Systems (IT801)',
+        room: 'Classroom 302',
+        period: 'Period 02 (10:00 - 11:00 AM)',
+        enrolledCount: 5,
+        bioIndexed: '5/5 (100%)',
+        avgAttend: '82.0%',
+        classesTaken: 10,
+        badge: 'B.Tech IT • 4th Yr • IT801',
+        heroDesc: 'Multi-face capture for IT801 using dlib 128-D embedding matrix.'
+      },
+      'prof_ananya': {
+        name: 'Prof. Ananya Mukherjee',
+        dept: 'Dept. of Information Technology',
+        initials: 'AM',
+        classId: 1,
+        subjectId: 3,
+        cohort: 'B.Tech IT - 4th Year - Sec A',
+        course: 'Cyber & Information Security (IT803)',
+        room: 'Cyber Lab 401',
+        period: 'Period 04 (01:00 - 02:00 PM)',
+        enrolledCount: 5,
+        bioIndexed: '5/5 (100%)',
+        avgAttend: '85.0%',
+        classesTaken: 8,
+        badge: 'B.Tech IT • 4th Yr • IT803',
+        heroDesc: 'Multi-face capture for IT803 Cyber Security lab session.'
+      },
+      'prof_rituparna': {
+        name: 'Prof. Rituparna Sinha',
+        dept: 'Dept. of Information Technology',
+        initials: 'RS',
+        classId: 1,
+        subjectId: 2,
+        cohort: 'B.Tech IT - 4th Year - Sec A',
+        course: 'Machine Learning & Pattern Recognition (IT802)',
+        room: 'Software Lab 304',
+        period: 'Period 03 (11:30 AM - 12:30 PM)',
+        enrolledCount: 5,
+        bioIndexed: '5/5 (100%)',
+        avgAttend: '80.0%',
+        classesTaken: 1,
+        badge: 'B.Tech IT • 4th Yr • IT802',
+        heroDesc: 'Multi-face capture for IT802 Machine Learning lecture.'
+      },
+      'prof_rajesh': {
+        name: 'Prof. Rajesh Sharma',
+        dept: 'Dept. of AI & Data Science',
+        initials: 'RS',
+        classId: 3,
+        subjectId: 6,
+        cohort: 'B.Tech AI & DS - 2nd Year',
+        course: 'Deep Learning & Computer Vision (AD401)',
+        room: 'AI Hub 105',
+        period: 'Period 03 (11:30 AM - 12:30 PM)',
+        enrolledCount: 5,
+        bioIndexed: '5/5 (100%)',
+        avgAttend: '0.0%',
+        classesTaken: 0,
+        badge: 'B.Tech AI & DS • 2nd Yr • AD401',
+        heroDesc: 'Multi-face capture for AD401 Deep Learning lecture.'
+      },
+      'prof_debashis': {
+        name: 'Prof. Debashis Roy',
+        dept: 'Dept. of Computer Science & Engineering',
+        initials: 'DR',
+        classId: 2,
+        subjectId: 4,
+        cohort: 'B.Tech CSE - 3rd Year - Sec B',
+        course: 'Computer Networks (CS601)',
+        room: 'CSE Hall 204',
+        period: 'Period 05 (02:30 - 03:30 PM)',
+        enrolledCount: 5,
+        bioIndexed: '5/5 (100%)',
+        avgAttend: '0.0%',
+        classesTaken: 0,
+        badge: 'B.Tech CSE • 3rd Yr • CS601',
+        heroDesc: 'Multi-face capture for CS601 Computer Networks.'
+      }
+    };
+
+    // Load initial data from Django backend
+    async function loadBackendData() {
+      const statusElem = document.getElementById('faculty-fetch-status');
+      const studentFacStatus = document.getElementById('student-faculty-status');
+
+      try {
+        // 1. Fetch Teachers
+        const teachersRes = await fetch(`${API_BASE}/users/teachers/`);
+        if (teachersRes.ok) {
+          state.teachers = await teachersRes.json();
+          renderTeachersList();
+          renderStudentFacultyPicker();
+          await OfflineDB.setRoster('teachers', state.teachers);
+          const countText = `${state.teachers.length} Live Professors in DB`;
+          if (statusElem) statusElem.textContent = countText;
+          if (studentFacStatus) studentFacStatus.textContent = countText;
+        }
+
+        // 2. Fetch Classes
+        const classesRes = await fetch(`${API_BASE}/classes/`);
+        if (classesRes.ok) {
+          state.classes = await classesRes.json();
+          await OfflineDB.setRoster('classes', state.classes);
+        }
+
+        // 3. Fetch Students
+        const studentsRes = await fetch(`${API_BASE}/users/students/`);
+        if (studentsRes.ok) {
+          state.students = await studentsRes.json();
+          renderStudentsList();
+          renderFaceRegistry();
+          await OfflineDB.setRoster('students', state.students);
+          try { localStorage.setItem('veriface_students', JSON.stringify(state.students)); } catch(e) {}
+        }
+
+        // 4. Fetch Attendance Logs (for dynamic sessions & classes conducted)
+        try {
+          const attRes = await fetch(`${API_BASE}/attendance/`);
+          if (attRes.ok) {
+            state.attendanceLogs = await attRes.json();
+            await OfflineDB.setRoster('attendanceLogs', state.attendanceLogs);
+            try { 
+              localStorage.setItem('veriface_logs', JSON.stringify(state.attendanceLogs));
+              localStorage.setItem('veriface_last_sync_time', new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }));
+            } catch(e) {}
+            if (state.currentUser && state.currentUserRole === 'teacher') {
+              setupTeacherDashboard(state.currentUser);
+            }
+          }
+        } catch(e) {
+          console.warn('Could not fetch initial attendance logs:', e);
+        }
+
+        updateNetworkStatus(true);
+      } catch (err) {
+        console.warn('Backend connection notice:', err);
+        updateNetworkStatus(false);
+      }
+    }
+
+    function renderTeachersList() {
+      const grid = document.getElementById('preset-teachers-grid');
+      if (!grid || !state.teachers.length) return;
+
+      grid.innerHTML = '';
+      state.teachers.forEach((t, idx) => {
+        const btn = document.createElement('button');
+        const isSelected = (!state.currentTeacher && idx === 0) || (state.currentTeacher?.username === t.username);
+        if (isSelected && !state.currentTeacher) state.currentTeacher = t;
+
+        btn.className = `p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left transition-all ${isSelected ? 'border-2 border-primary ring-2 ring-primary/10' : 'border border-outline-variant/30'}`;
+        btn.onclick = () => selectTeacher(t, btn);
+        btn.innerHTML = `
+          <div class="font-bold text-on-surface truncate">Prof. ${t.first_name} ${t.last_name}</div>
+          <div class="text-[10px] text-secondary truncate">${t.department}</div>
+        `;
+        grid.appendChild(btn);
+      });
+    }
+
+    function selectTeacher(teacher, btnElem) {
+      state.currentTeacher = teacher;
+      document.getElementById('login-input').value = teacher.username;
+      
+      const errBox = document.getElementById('login-error-box');
+      if (errBox) errBox.classList.add('hidden');
+
+      document.querySelectorAll('#preset-teachers-grid button').forEach(b => {
+        b.className = 'p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border border-outline-variant/30 transition-all';
+      });
+      if (btnElem) {
+        btnElem.className = 'p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border-2 border-primary ring-2 ring-primary/10 transition-all';
+      }
+    }
+
+    function renderStudentFacultyPicker() {
+      const grid = document.getElementById('student-faculty-picker');
+      if (!grid || !state.teachers.length) return;
+
+      grid.innerHTML = '';
+      state.teachers.forEach((t, idx) => {
+        const btn = document.createElement('button');
+        const isSelected = (!state.selectedStudentFaculty && idx === 1) || (state.selectedStudentFaculty === t.username);
+        if (isSelected && !state.selectedStudentFaculty) state.selectedStudentFaculty = t.username;
+
+        btn.className = `p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left transition-all ${isSelected ? 'border-2 border-primary ring-2 ring-primary/10' : 'border border-outline-variant/30'}`;
+        btn.onclick = () => selectStudentFaculty(t.username, btn);
+        btn.innerHTML = `
+          <div class="font-bold text-on-surface truncate">Prof. ${t.first_name} ${t.last_name}</div>
+          <div class="text-[10px] text-secondary truncate">${t.department}</div>
+        `;
+        grid.appendChild(btn);
+      });
+    }
+
+    function selectStudentFaculty(teacherUname, btnElem) {
+      state.selectedStudentFaculty = teacherUname;
+      document.querySelectorAll('#student-faculty-picker button').forEach(b => {
+        b.className = 'p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border border-outline-variant/30 transition-all';
+      });
+      if (btnElem) {
+        btnElem.className = 'p-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border-2 border-primary ring-2 ring-primary/10 transition-all';
+      }
+    }
+
+    function renderStudentsList() {
+      const grid = document.getElementById('preset-students-grid');
+      if (!grid || !state.students.length) return;
+
+      grid.innerHTML = '';
+      state.students.forEach((s, idx) => {
+        const btn = document.createElement('button');
+        const isSelected = (!state.selectedStudent && (s.username.toLowerCase().includes('sourjya') || idx === 0)) || (state.selectedStudent?.username === s.username);
+        if (isSelected && !state.selectedStudent) state.selectedStudent = s;
+
+        const avatarUrl = getMediaUrl(s.profile_picture);
+        const avatarHtml = avatarUrl
+          ? `<img src="${avatarUrl}" class="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-primary/20" alt="${s.first_name}" onerror="this.outerHTML='<div class=\\'w-8 h-8 rounded-full bg-primary-fixed text-primary font-bold text-[10px] flex items-center justify-center shrink-0\\'>${s.first_name?.[0] || 'S'}${s.last_name?.[0] || 'T'}</div>'"/>`
+          : `<div class="w-8 h-8 rounded-full bg-primary-fixed text-primary font-bold text-[10px] flex items-center justify-center shrink-0">${s.first_name?.[0] || 'S'}${s.last_name?.[0] || 'T'}</div>`;
+
+        const attPct = (s.attendance_stats && s.attendance_stats.percentage != null) ? `${s.attendance_stats.percentage.toFixed(1)}%` : 'Enrolled';
+        const isWarning = s.attendance_stats && s.attendance_stats.percentage < 75.0;
+
+        btn.className = `p-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-left transition-all cursor-pointer ${isSelected ? 'border-2 border-primary ring-2 ring-primary/10' : 'border border-outline-variant/30'}`;
+        btn.onclick = () => {
+          selectStudent(s, btn);
+          performLogin();
+        };
+        btn.innerHTML = `
+          <div class="flex items-center gap-2 min-w-0">
+            ${avatarHtml}
+            <div class="min-w-0 flex-1">
+              <div class="font-bold text-on-surface truncate">${s.first_name} ${s.last_name}</div>
+              <div class="text-[10px] text-secondary truncate flex items-center justify-between">
+                <span>${s.roll_number || s.username}</span>
+                <span class="font-bold ${isWarning ? 'text-amber-800' : 'text-emerald-700'}">${attPct}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(btn);
+      });
+    }
+
+    function selectStudent(student, btnElem) {
+      state.selectedStudent = student;
+      document.getElementById('login-input').value = student.username;
+      
+      const disp = document.getElementById('student-portal-username-display');
+      if (disp) disp.textContent = student.username;
+
+      document.querySelectorAll('#preset-students-grid button').forEach(b => {
+        b.className = 'p-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border border-outline-variant/30 transition-all';
+      });
+      if (btnElem) {
+        btnElem.className = 'p-2 rounded-xl bg-surface-container-low hover:bg-surface-container text-left border-2 border-primary ring-2 ring-primary/10 transition-all';
+      }
+    }
+
+    function togglePasswordVisibility() {
+      const pwdInput = document.getElementById('login-password');
+      const icon = document.getElementById('pwd-toggle-icon');
+      if (!pwdInput) return;
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        if (icon) icon.textContent = 'visibility_off';
+      } else {
+        pwdInput.type = 'password';
+        if (icon) icon.textContent = 'visibility';
+      }
+    }
+
+    function setLoginRole(r) {
+      state.currentUserRole = r;
+      const btnTeacher = document.getElementById('login-role-teacher');
+      const btnStudent = document.getElementById('login-role-student');
+      const secTeacher = document.getElementById('section-teacher-login');
+      const secStudent = document.getElementById('section-student-login');
+      const btnSubmitText = document.getElementById('btn-portal-text');
+      const btnSubmitIcon = document.getElementById('btn-portal-icon');
+      const errBox = document.getElementById('login-error-box');
+      if (errBox) errBox.classList.add('hidden');
+
+      if (r === 'teacher') {
+        btnTeacher.className = 'py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm';
+        btnStudent.className = 'py-2.5 rounded-lg text-secondary';
+        if (secTeacher) secTeacher.classList.remove('hidden');
+        if (secStudent) secStudent.classList.add('hidden');
+        if (btnSubmitText) btnSubmitText.textContent = 'Login to Faculty Portal';
+        if (btnSubmitIcon) btnSubmitIcon.textContent = 'lock';
+
+        const teacherUname = state.currentTeacher?.username || 'prof_sudipta';
+        document.getElementById('login-input').value = teacherUname;
+      } else {
+        btnStudent.className = 'py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm';
+        btnTeacher.className = 'py-2.5 rounded-lg text-secondary';
+        if (secTeacher) secTeacher.classList.add('hidden');
+        if (secStudent) secStudent.classList.remove('hidden');
+        if (btnSubmitText) btnSubmitText.textContent = 'Enter Portal';
+        if (btnSubmitIcon) btnSubmitIcon.textContent = 'arrow_forward';
+
+        if (!state.selectedStudent && state.students.length) {
+          state.selectedStudent = state.students.find(s => s.username.toLowerCase().includes('sourjya')) || state.students[0];
+        }
+        const studentUname = state.selectedStudent?.username || 'Sourjya_Saha';
+        document.getElementById('login-input').value = studentUname;
+        const disp = document.getElementById('student-portal-username-display');
+        if (disp) disp.textContent = studentUname;
+      }
+    }
+
+    function fillLogin(uname, r) {
+      setLoginRole(r);
+      document.getElementById('login-input').value = uname;
+    }
+
+    function renderFaceRegistry() {
+      const registryContainer = document.querySelector('#screen-face-id .space-y-2');
+      if (!registryContainer || !state.students.length) return;
+
+      registryContainer.innerHTML = state.students.map(s => {
+        const avatarUrl = getMediaUrl(s.profile_picture);
+        const avatarHtml = avatarUrl
+          ? `<img src="${avatarUrl}" class="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-primary/20" alt="${s.first_name}" onerror="this.outerHTML='<div class=\\'w-10 h-10 rounded-full bg-primary-fixed text-primary font-bold text-xs flex items-center justify-center shrink-0\\'>${s.first_name?.[0] || 'S'}${s.last_name?.[0] || 'T'}</div>'"/>`
+          : `<div class="w-10 h-10 rounded-full bg-primary-fixed text-primary font-bold text-xs flex items-center justify-center shrink-0">${s.first_name?.[0] || 'S'}${s.last_name?.[0] || 'T'}</div>`;
+
+        return `
+        <div class="p-3 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex justify-between items-center">
+          <div class="flex items-center gap-3 min-w-0">
+            ${avatarHtml}
+            <div class="min-w-0">
+              <div class="font-bold truncate">${s.first_name} ${s.last_name} (${s.roll_number || 'No Roll'})</div>
+              <div class="text-[10px] ${s.has_registered_face ? 'text-secondary' : 'text-amber-800 font-semibold'} truncate">
+                ${s.has_registered_face ? 'Centroid biometric indexed (128-D vector)' : 'No face embeddings in database'}
+              </div>
+            </div>
+          </div>
+          ${s.has_registered_face 
+            ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px] shrink-0">Registered</span>'
+            : `<button onclick="enrollFaceModal(${s.id}, '${s.first_name} ${s.last_name}')" class="px-2.5 py-1 rounded-xl bg-primary text-white font-bold text-[10px] hover:bg-primary-container shrink-0">
+                 + Enroll Face
+               </button>`
+          }
+        </div>
+      `;
+      }).join('');
+    }
+
+    function enrollFaceModal(studentId, studentName) {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.accept = 'image/*';
+      input.onchange = async (e) => {
+        if (!e.target.files.length) return;
+        const formData = new FormData();
+        Array.from(e.target.files).forEach(f => formData.append('photos', f));
+        
+        try {
+          alert(`Uploading ${e.target.files.length} photo(s) for ${studentName} to extract 128-D facial vector...`);
+          const res = await fetch(`${API_BASE}/users/${studentId}/register-face/`, {
+            method: 'POST',
+            body: formData
+          });
+          const data = await res.json();
+          if (res.ok) {
+            alert(data.message || 'Face biometrics enrolled successfully!');
+            loadBackendData();
+          } else {
+            alert(data.error || 'Face enrollment error');
+          }
+        } catch (err) {
+          alert('Network or server error during enrollment: ' + err.message);
+        }
+      };
+      input.click();
+    }
+
+    async function performLogin() {
+      const errBox = document.getElementById('login-error-box');
+      const errText = document.getElementById('login-error-text');
+      if (errBox) errBox.classList.add('hidden');
+
+      if (state.currentUserRole === 'student') {
+        // STUDENT LOGIN: 100% Passwordless
+        const uname = state.selectedStudent?.username || document.getElementById('login-input').value.trim() || 'ayush_nyas';
+        let student = state.students.find(s => s.username === uname) || state.selectedStudent;
+
+        try {
+          const res = await fetch(`${API_BASE}/users/login/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: uname, role: 'student' })
+          });
+          const data = await res.json();
+          if (res.ok && data.user) {
+            student = data.user;
+          }
+        } catch (e) {
+          console.warn('Student login network note:', e);
+        }
+
+        if (!student) {
+          if (errBox && errText) {
+            errText.textContent = 'Selected student profile was not found.';
+            errBox.classList.remove('hidden');
+          }
+          return;
+        }
+
+        state.currentUser = student;
+        state.currentUserRole = 'student';
+        setupStudentDashboard(student, state.selectedStudentFaculty);
+        showAppForRole('student');
+        if (student && student.id) {
+          subscribeStudentToWS(student.id);
+        }
+        return;
+      }
+
+      // TEACHER LOGIN: Strict Admin-Assigned Password Required
+      const uname = document.getElementById('login-input').value.trim() || state.currentTeacher?.username || 'prof_sudipta';
+      const pwdInput = document.getElementById('login-password');
+      const password = pwdInput ? pwdInput.value.trim() : '';
+
+      if (!password) {
+        if (errBox && errText) {
+          errText.textContent = 'Faculty password is required. Please enter the password assigned in Django Admin.';
+          errBox.classList.remove('hidden');
+        }
+        if (pwdInput) pwdInput.focus();
+        return;
+      }
+
+      const submitBtn = document.getElementById('btn-portal-submit');
+      const submitTextElem = document.getElementById('btn-portal-text');
+      const origText = submitTextElem ? submitTextElem.textContent : 'Login to Faculty Portal';
+      if (submitBtn) submitBtn.disabled = true;
+      if (submitTextElem) submitTextElem.textContent = 'Verifying Password...';
+
+      try {
+        const res = await fetch(`${API_BASE}/users/login/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: uname, password: password, role: 'teacher' })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          if (errBox && errText) {
+            errText.textContent = data.error || 'Incorrect faculty password. Please verify the password set in Django Admin.';
+            errBox.classList.remove('hidden');
+          }
+          if (pwdInput) {
+            pwdInput.classList.add('border-error', 'ring-2', 'ring-error/20');
+            setTimeout(() => pwdInput.classList.remove('border-error', 'ring-2', 'ring-error/20'), 3000);
+          }
+          return;
+        }
+
+        // Authentication Successful
+        const teacher = data.user || state.teachers.find(t => t.username === uname) || {
+          username: uname, first_name: 'Faculty', last_name: 'Member', department: 'Information Technology'
+        };
+        state.currentUser = teacher;
+        state.currentUserRole = 'teacher';
+        state.currentTeacher = teacher;
+        if (pwdInput) pwdInput.value = '';
+
+        setupTeacherDashboard(teacher);
+        showAppForRole('teacher');
+      } catch (err) {
+        if (errBox && errText) {
+          errText.textContent = 'Server connection error: ' + err.message;
+          errBox.classList.remove('hidden');
+        }
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+        if (submitTextElem) submitTextElem.textContent = origText;
+      }
+    }
+
+    function setupTeacherDashboard(teacher) {
+      const cfg = TEACHER_CONFIG[teacher.username] || {
+        name: `Prof. ${teacher.first_name} ${teacher.last_name}`,
+        dept: `Dept. of ${teacher.department || 'Information Technology'}`,
+        initials: `${teacher.first_name?.[0] || 'P'}${teacher.last_name?.[0] || 'F'}`,
+        classId: 1,
+        cohort: 'B.Tech IT - 4th Year - Sec A',
+        course: `${teacher.department || 'Technology'} Lecture`,
+        room: 'Classroom 302',
+        period: 'Period 02 (10:00 - 11:00 AM)',
+        enrolledCount: state.students.length || 4,
+        bioIndexed: `${state.students.filter(s => s.has_registered_face).length}/${state.students.length || 4}`,
+        avgAttend: '90.0%',
+        badge: `${teacher.department || 'B.Tech IT'} • 4th Yr`,
+        heroDesc: `Multi-face capture for Prof. ${teacher.first_name} ${teacher.last_name}.`
+      };
+
+      state.selectedClassId = cfg.classId;
+      state.selectedSubjectId = cfg.subjectId || 1;
+
+      const pName = document.getElementById('faculty-profile-name');
+      const pDept = document.getElementById('faculty-profile-dept');
+      const pInit = document.getElementById('faculty-avatar-initials');
+      const pRoom = document.getElementById('faculty-room-info');
+      const pPeriod = document.getElementById('faculty-period-info');
+      const pCohort = document.getElementById('faculty-cohort-name');
+      const pCourse = document.getElementById('faculty-course-name');
+      const pEnrolled = document.getElementById('faculty-enrolled-count');
+      const pBio = document.getElementById('faculty-bio-indexed');
+      const pAvg = document.getElementById('faculty-avg-attend');
+      const pBadge = document.getElementById('scan-cohort-badge');
+      const pHero = document.getElementById('faculty-hero-desc');
+
+      if (pName) pName.textContent = cfg.name;
+      if (pDept) pDept.textContent = cfg.dept;
+      const topImg = document.getElementById('top-avatar-img');
+      const teacherPic = getMediaUrl(teacher.profile_picture);
+      if (teacherPic && topImg) {
+        topImg.src = teacherPic;
+        topImg.classList.remove('hidden');
+        if (pInit) pInit.classList.add('hidden');
+      } else {
+        if (topImg) topImg.classList.add('hidden');
+        if (pInit) {
+          pInit.textContent = cfg.initials;
+          pInit.classList.remove('hidden');
+        }
+      }
+      if (pRoom) pRoom.textContent = cfg.room;
+      if (pPeriod) pPeriod.textContent = cfg.period;
+      if (pCohort) pCohort.textContent = cfg.cohort;
+      if (pCourse) pCourse.textContent = cfg.course;
+      if (pBadge) pBadge.textContent = cfg.badge;
+      if (pHero) pHero.textContent = cfg.heroDesc;
+
+      // Extract subject code from course e.g. "CS601", "IT801", "IT802", "IT803", "AD401"
+      const codeMatch = (cfg.course || '').match(/\(([^)]+)\)/);
+      const subjectCode = codeMatch ? codeMatch[1].trim() : (cfg.badge?.split('•')?.[2]?.trim() || '');
+
+      // Compute actual sessions conducted and average attendance from live database logs
+      let classesCount = 0;
+      let avgAttendPct = '0.0%';
+
+      if (state.attendanceLogs && state.attendanceLogs.length > 0) {
+        const teacherLogs = state.attendanceLogs.filter(log => {
+          if (cfg.subjectId && log.subject === cfg.subjectId) return true;
+          if (subjectCode && log.subject_code && log.subject_code.toUpperCase() === subjectCode.toUpperCase()) return true;
+          if (cfg.course && log.subject_name && cfg.course.toLowerCase().includes(log.subject_name.toLowerCase())) return true;
+          return false;
+        });
+        if (teacherLogs.length > 0) {
+          const uniqueDates = new Set(teacherLogs.map(l => l.date));
+          classesCount = uniqueDates.size;
+          const presents = teacherLogs.filter(l => l.status === 'PRESENT').length;
+          avgAttendPct = ((presents / teacherLogs.length) * 100).toFixed(1) + '%';
+        }
+      } else if (cfg.classesTaken !== undefined) {
+        classesCount = cfg.classesTaken;
+        avgAttendPct = cfg.avgAttend || '0.0%';
+      }
+
+      // Compute enrolled and bio indexed counts from real student roster
+      const totalEnrolled = (state.students && state.students.length > 0) ? state.students.length : 5;
+      const registeredFaces = (state.students && state.students.length > 0)
+        ? state.students.filter(s => s.has_registered_face).length
+        : totalEnrolled;
+
+      if (pEnrolled) pEnrolled.textContent = totalEnrolled;
+      if (pBio) pBio.textContent = `${registeredFaces}/${totalEnrolled}`;
+      if (pAvg) pAvg.textContent = avgAttendPct;
+
+      const pClassesTaken = document.getElementById('faculty-classes-taken');
+      const pClassesSub = document.getElementById('faculty-classes-sub');
+      const pHistoryBadge = document.getElementById('faculty-history-count-badge');
+
+      if (pClassesTaken) pClassesTaken.textContent = classesCount;
+      if (pClassesSub) {
+        pClassesSub.textContent = classesCount > 0 ? `• ${classesCount} Sessions Recorded` : '• 0 Sessions (New)';
+      }
+      if (pHistoryBadge) {
+        pHistoryBadge.textContent = `${classesCount} Sessions`;
+      }
+    }
+
+    function setupStudentDashboard(student, selectedFacultyUname) {
+      const activeFacultyUname = selectedFacultyUname || state.selectedStudentFaculty || 'prof_ananya';
+      const fullName = `${student.first_name} ${student.last_name}`;
+      const initials = `${student.first_name?.[0] || 'S'}${student.last_name?.[0] || 'T'}`;
+      const roll = student.roll_number || 'IT202604';
+      const className = student.student_class_name || 'B.Tech IT 4th Yr - Sec A';
+      const dept = student.department || 'Information Technology';
+
+      let stats = student.attendance_stats || {
+        total_days: 0,
+        present_days: 0,
+        absent_days: 0,
+        percentage: 0.0
+      };
+
+      // Dynamically compute exact stats from all recorded attendance logs in memory/cache
+      if (state.attendanceLogs && state.attendanceLogs.length > 0) {
+        const myLogs = state.attendanceLogs.filter(l => 
+          (l.student && l.student === student.id) || 
+          (l.student_name && l.student_name.toLowerCase() === (student.username || '').toLowerCase()) ||
+          (l.student_roll && student.roll_number && l.student_roll === student.roll_number)
+        );
+        if (myLogs.length > 0) {
+          const presents = myLogs.filter(l => l.status === 'PRESENT').length;
+          const totals = myLogs.length;
+          stats = {
+            total_days: totals,
+            present_days: presents,
+            absent_days: totals - presents,
+            percentage: (presents / totals) * 100,
+            by_subject: stats.by_subject || {}
+          };
+        }
+      }
+
+      const pct = stats.percentage != null ? stats.percentage : 0.0;
+      const isGoodStanding = pct >= 75.0;
+
+      const sInit = document.getElementById('student-avatar-initials');
+      const sImg = document.getElementById('student-avatar-img');
+      const topInit = document.getElementById('faculty-avatar-initials');
+      const topImg = document.getElementById('top-avatar-img');
+      const sName = document.getElementById('student-profile-name');
+      const sRoll = document.getElementById('student-profile-roll');
+      const sPill = document.getElementById('student-standing-pill');
+      const sDept = document.getElementById('student-dept-tag');
+      const sPct = document.getElementById('student-overall-percentage');
+      const sDays = document.getElementById('student-days-summary');
+      const sBar = document.getElementById('student-progress-bar');
+      const sMargin = document.getElementById('student-margin-text');
+      const sTotal = document.getElementById('student-total-held');
+      const sAttended = document.getElementById('student-total-attended');
+      const sMissed = document.getElementById('student-total-missed');
+
+      const avatarUrl = getMediaUrl(student.profile_picture);
+      if (avatarUrl && sImg) {
+        sImg.onerror = () => {
+          sImg.classList.add('hidden');
+          if (sInit) sInit.classList.remove('hidden');
+        };
+        sImg.src = avatarUrl;
+        sImg.classList.remove('hidden');
+        if (sInit) sInit.classList.add('hidden');
+      } else {
+        if (sImg) sImg.classList.add('hidden');
+        if (sInit) {
+          sInit.textContent = initials;
+          sInit.classList.remove('hidden');
+        }
+      }
+
+      if (avatarUrl && topImg) {
+        topImg.onerror = () => {
+          topImg.classList.add('hidden');
+          if (topInit) topInit.classList.remove('hidden');
+        };
+        topImg.src = avatarUrl;
+        topImg.classList.remove('hidden');
+        if (topInit) topInit.classList.add('hidden');
+      } else {
+        if (topImg) topImg.classList.add('hidden');
+        if (topInit) {
+          topInit.textContent = initials;
+          topInit.classList.remove('hidden');
+        }
+      }
+
+      if (sName) sName.textContent = fullName;
+      if (sRoll) sRoll.textContent = `Roll: ${roll} • ${className}`;
+      if (sDept) sDept.textContent = dept;
+      if (sPct) sPct.textContent = `${pct.toFixed(1)}%`;
+      if (sDays) sDays.textContent = `${stats.present_days} of ${stats.total_days} Sessions Attended`;
+      if (sBar) {
+        sBar.style.width = `${pct}%`;
+        sBar.className = isGoodStanding ? 'bg-emerald-400 h-full rounded-full transition-all duration-500' : 'bg-amber-400 h-full rounded-full transition-all duration-500';
+      }
+      const sSync = document.getElementById('student-sync-timestamp');
+      const lastSync = localStorage.getItem('veriface_last_sync_time');
+      if (sSync && lastSync) {
+        sSync.textContent = `Live Synced: ${lastSync}`;
+      }
+      if (sPill) {
+        if (isGoodStanding) {
+          sPill.className = 'px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]';
+          sPill.textContent = 'Good Standing (Eligible)';
+        } else {
+          sPill.className = 'px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-bold text-[10px]';
+          sPill.textContent = 'Low Attendance Warning';
+        }
+      }
+      if (sMargin) {
+        if (isGoodStanding) {
+          const diff = (pct - 75.0).toFixed(1);
+          sMargin.className = 'text-emerald-300 font-semibold';
+          sMargin.textContent = `+${diff}% Above 75% Safety Margin`;
+        } else {
+          const diff = (75.0 - pct).toFixed(1);
+          sMargin.className = 'text-amber-300 font-semibold';
+          sMargin.textContent = `-${diff}% Short of 75% Criteria`;
+        }
+      }
+      if (sTotal) sTotal.textContent = stats.total_days;
+      if (sAttended) sAttended.textContent = stats.present_days;
+      if (sMissed) sMissed.textContent = stats.absent_days;
+
+      // 1. Resolve selected faculty configuration UNIVERSALLY
+      const foundTeacher = state.teachers.find(t => t.username === activeFacultyUname);
+      const selFacultyCfg = TEACHER_CONFIG[activeFacultyUname] || {
+        name: foundTeacher ? `Prof. ${foundTeacher.first_name} ${foundTeacher.last_name}` : `Prof. ${activeFacultyUname}`,
+        course: foundTeacher?.department ? `${foundTeacher.department} Course` : 'Specialized Course',
+        dept: foundTeacher?.department || 'Department',
+        classesTaken: 0
+      };
+
+      // Extract Course Code and Course Title UNIVERSALLY
+      const selCodeMatch = (selFacultyCfg.course || '').match(/\(([^)]+)\)/);
+      const selCode = selCodeMatch ? selCodeMatch[1].trim() : (selFacultyCfg.badge?.split('•')?.[2]?.trim() || 'SUBJ');
+      const selCourseName = (selFacultyCfg.course || 'Course').replace(/\s*\([^)]*\)/, '').trim();
+      const selProfName = selFacultyCfg.name;
+
+      const courseList = document.getElementById('student-course-list');
+      if (courseList) {
+        // Universal professor name mapping
+        const profMap = {
+          'IT801': 'Prof. Sudipta Bhadra',
+          'IT802': 'Prof. Rituparna Sinha',
+          'IT803': 'Prof. Ananya Mukherjee',
+          'AD401': 'Prof. Rajesh Sharma',
+          'CS601': 'Prof. Debashis Roy'
+        };
+        profMap[selCode] = selProfName;
+
+        // Map of all subjects for this student
+        const subjectMap = {};
+
+        // A. Populate from student's database attendance stats
+        if (stats.by_subject) {
+          Object.values(stats.by_subject).forEach(s => {
+            const pName = profMap[s.code] || (s.code === selCode ? selProfName : 'Faculty In-Charge');
+            subjectMap[s.code] = {
+              code: s.code,
+              name: s.name,
+              total: s.total || 0,
+              present: s.present || 0,
+              percentage: s.percentage != null ? s.percentage : 0.0,
+              profName: pName
+            };
+          });
+        }
+
+        // B. Ensure baseline B.Tech IT subjects exist
+        const itBaselines = [
+          { code: 'IT801', name: 'Cloud Computing & Distributed Systems', profName: 'Prof. Sudipta Bhadra' },
+          { code: 'IT802', name: 'Machine Learning & Pattern Recognition', profName: 'Prof. Rituparna Sinha' },
+          { code: 'IT803', name: 'Cyber & Information Security', profName: 'Prof. Ananya Mukherjee' }
+        ];
+        itBaselines.forEach(base => {
+          if (!subjectMap[base.code]) {
+            subjectMap[base.code] = {
+              code: base.code,
+              name: base.name,
+              total: 0,
+              present: 0,
+              percentage: 0.0,
+              profName: base.profName
+            };
+          }
+        });
+
+        // C. UNIVERSAL INJECTION: The selected professor's course is ALWAYS guaranteed present!
+        if (!subjectMap[selCode]) {
+          subjectMap[selCode] = {
+            code: selCode,
+            name: selCourseName,
+            total: 0,
+            present: 0,
+            percentage: 0.0,
+            profName: selProfName
+          };
+        } else {
+          subjectMap[selCode].profName = selProfName;
+          if (selCourseName && (!subjectMap[selCode].name || subjectMap[selCode].name.includes('Lecture'))) {
+            subjectMap[selCode].name = selCourseName;
+          }
+        }
+
+        // D. Sort so the SELECTED PROFESSOR is ALWAYS placed strictly at index 0 (top)!
+        const allSubjectsList = Object.values(subjectMap);
+        const selectedCourseItem = allSubjectsList.find(c => c.code === selCode);
+        const otherCourseItems = allSubjectsList.filter(c => c.code !== selCode);
+
+        // Put selected course first!
+        const finalDisplayList = selectedCourseItem ? [selectedCourseItem, ...otherCourseItems] : otherCourseItems;
+
+        courseList.innerHTML = finalDisplayList.map((c) => {
+          const isSelected = (c.code === selCode);
+          const hasClasses = c.total > 0;
+          const isSubjGood = hasClasses ? c.percentage >= 75.0 : true;
+
+          const attendText = hasClasses 
+            ? `${c.profName} • ${c.present}/${c.total} Classes Verified`
+            : `${c.profName} • 0/0 Classes Verified (0 Sessions Conducted)`;
+
+          const rightBadge = hasClasses
+            ? `
+              <span class="font-bold ${isSubjGood ? 'text-emerald-600' : 'text-error'} text-sm">${c.percentage.toFixed(1)}%</span>
+              <div class="text-[9px] ${isSubjGood ? 'text-emerald-700' : 'text-error'} font-semibold">${isSubjGood ? 'Verified' : 'Low'}</div>
+            `
+            : `
+              <span class="font-bold text-secondary text-sm">0.0%</span>
+              <div class="text-[9px] text-primary font-semibold">0 Sessions</div>
+            `;
+
+          return `
+            <div class="p-3 rounded-2xl ${isSelected ? 'bg-primary/10 border-2 border-primary ring-2 ring-primary/20 shadow-sm' : 'bg-surface-container-low border border-outline-variant/30'} flex items-center justify-between gap-2 transition-all">
+              <div class="min-w-0 flex-1">
+                ${isSelected ? '<div class="mb-1"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary text-white text-[9px] font-bold shadow-xs"><span class="material-symbols-outlined text-[11px]">star</span>Selected Professor</span></div>' : ''}
+                <div class="font-bold text-on-surface text-xs leading-snug">${c.name} (${c.code})</div>
+                <div class="text-[10px] text-secondary mt-0.5">${attendText}</div>
+              </div>
+              <div class="text-right shrink-0">
+                ${rightBadge}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function showAppForRole(role) {
+      document.getElementById('screen-login').classList.add('hidden');
+      document.getElementById('btn-logout').classList.remove('hidden');
+
+      const bottomNav = document.getElementById('bottom-nav');
+
+      if (role === 'student') {
+        // Completely remove bottom navigation bar when student is viewing
+        if (bottomNav) bottomNav.classList.add('hidden');
+        document.getElementById('header-screen-title').textContent = 'Student Portal';
+        navigateTo('dashboard');
+      } else {
+        // Show bottom navigation bar with faculty controls for teachers
+        if (bottomNav) bottomNav.classList.remove('hidden');
+        const navScan = document.getElementById('nav-take-attendance');
+        const navReview = document.getElementById('nav-attendance-review');
+        const navFaceId = document.getElementById('nav-face-id');
+        if (navScan) navScan.classList.remove('hidden');
+        if (navReview) navReview.classList.remove('hidden');
+        if (navFaceId) navFaceId.classList.remove('hidden');
+        document.getElementById('header-screen-title').textContent = 'Faculty Portal';
+        navigateTo('dashboard');
+      }
+    }
+
+    function performLogout() {
+      state.currentUser = null;
+      state.currentUserRole = 'teacher';
+
+      document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+      document.getElementById('screen-login').classList.remove('hidden');
+      document.getElementById('bottom-nav').classList.add('hidden');
+      document.getElementById('btn-logout').classList.add('hidden');
+
+      document.getElementById('header-screen-title').textContent = 'Faculty & Student Portal';
+      const topImg = document.getElementById('top-avatar-img');
+      if (topImg) topImg.classList.add('hidden');
+      const avatarInitials = document.getElementById('faculty-avatar-initials');
+      if (avatarInitials) {
+        avatarInitials.textContent = 'VF';
+        avatarInitials.classList.remove('hidden');
+      }
+
+      setLoginRole('teacher');
+      const pwdInput = document.getElementById('login-password');
+      if (pwdInput) pwdInput.value = '';
+      const errBox = document.getElementById('login-error-box');
+      if (errBox) errBox.classList.add('hidden');
+    }
+
+    function navigateTo(tab) {
+      const bottomNav = document.getElementById('bottom-nav');
+
+      if (state.currentUserRole === 'student') {
+        // Ensure bottom nav is always hidden when student is viewing
+        if (bottomNav) bottomNav.classList.add('hidden');
+
+        if (['take-attendance', 'attendance-review', 'face-id'].includes(tab)) {
+          alert('Access Restricted: Only authenticated faculty members with verified passwords can access camera scanning or biometric enrollment.');
+          return;
+        }
+
+        const stHistBtn = document.getElementById('student-history-back-btn');
+        if (stHistBtn) {
+          if (tab === 'history') {
+            stHistBtn.classList.remove('hidden');
+          } else {
+            stHistBtn.classList.add('hidden');
+          }
+        }
+      } else {
+        if (bottomNav) bottomNav.classList.remove('hidden');
+        const stHistBtn = document.getElementById('student-history-back-btn');
+        if (stHistBtn) stHistBtn.classList.add('hidden');
+      }
+
+      activeTab = tab;
+
+      let targetId = tab;
+      if (tab === 'dashboard') {
+        targetId = state.currentUserRole === 'student' ? 'student-dashboard' : 'dashboard';
+      }
+
+      document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+      const target = document.getElementById('screen-' + targetId);
+      if (target) target.classList.remove('hidden');
+
+      // Update Nav highlighting
+      const navIds = ['dashboard', 'take-attendance', 'attendance-review', 'history', 'face-id'];
+      navIds.forEach(id => {
+        const btn = document.getElementById('nav-' + id);
+        if (btn) {
+          if (id === tab) {
+            btn.className = 'flex flex-col items-center text-primary font-semibold text-xs';
+          } else {
+            btn.className = 'flex flex-col items-center text-secondary text-xs hover:text-on-surface';
+          }
+        }
+      });
+
+      // Update Title
+      const titleMap = {
+        'dashboard': state.currentUserRole === 'student' ? 'Student Portal' : 'Faculty Portal',
+        'student-dashboard': 'Student Portal',
+        'take-attendance': 'Take Attendance',
+        'attendance-review': 'Attendance Review',
+        'history': state.currentUserRole === 'student' ? 'My Attendance History' : 'Attendance History',
+        'face-id': 'Face ID Registry'
+      };
+      document.getElementById('header-screen-title').textContent = titleMap[tab] || 'VeriFace AI';
+      window.scrollTo(0, 0);
+
+      if (tab === 'attendance-review') {
+        const emptyState = document.getElementById('review-empty-state');
+        const contentState = document.getElementById('review-content-state');
+        if (emptyState && contentState) {
+          if (state.attendanceDraft) {
+            emptyState.classList.add('hidden');
+            contentState.classList.remove('hidden');
+          } else {
+            emptyState.classList.remove('hidden');
+            contentState.classList.add('hidden');
+          }
+        }
+        const badge = document.getElementById('review-date-badge');
+        if (badge) {
+          const d = new Date();
+          const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+          badge.textContent = d.toLocaleDateString('en-US', options);
+        }
+      }
+
+      if (tab === 'history') {
+        loadAttendanceHistory();
+      }
+    }
+
+    async function loadAttendanceHistory() {
+      try {
+        const [logsRes, studentsRes] = await Promise.all([
+          fetch(`${API_BASE}/attendance/`),
+          fetch(`${API_BASE}/users/students/`)
+        ]);
+        if (logsRes.ok) {
+          const logs = await logsRes.json();
+          state.attendanceLogs = logs;
+          const students = studentsRes.ok ? await studentsRes.json() : (state.students || []);
+          renderHistoryTable(logs, students);
+
+          // Update faculty classes-taken badge dynamically on dashboard
+          if (state.currentUser && state.currentUserRole === 'teacher') {
+            setupTeacherDashboard(state.currentUser);
+          }
+          return;
+        }
+      } catch (e) {
+        console.warn('Could not load attendance history from network, rendering local/cached logs:', e);
+      }
+      renderHistoryTable(state.attendanceLogs || [], state.students || []);
+    }
+
+    function renderHistoryTable(logs, students) {
+      const tbody = document.querySelector('#screen-history table tbody');
+      const subtitle = document.querySelector('#screen-history .text-secondary');
+      if (!tbody) return;
+
+      const isStudent = state.currentUserRole === 'student' && state.currentUser;
+      const isTeacher = state.currentUserRole === 'teacher' && state.currentUser;
+
+      let filteredLogs = logs;
+      let teacherSessionCount = 0;
+
+      if (isStudent) {
+        filteredLogs = logs.filter(l => 
+          l.student_name === state.currentUser.first_name + ' ' + state.currentUser.last_name || 
+          l.student_name === state.currentUser.username ||
+          l.student === state.currentUser.id
+        );
+        if (subtitle) {
+          subtitle.textContent = `Attendance record for ${state.currentUser.first_name} ${state.currentUser.last_name} (${filteredLogs.length} verified sessions)`;
+        }
+      } else if (isTeacher) {
+        const cfg = TEACHER_CONFIG[state.currentUser.username] || {};
+        const codeMatch = (cfg.course || '').match(/\(([^)]+)\)/);
+        const subjectCode = codeMatch ? codeMatch[1].trim() : (cfg.badge?.split('•')?.[2]?.trim() || '');
+
+        filteredLogs = logs.filter(log => {
+          if (cfg.subjectId && log.subject === cfg.subjectId) return true;
+          if (subjectCode && log.subject_code && log.subject_code.toUpperCase() === subjectCode.toUpperCase()) return true;
+          if (cfg.course && log.subject_name && cfg.course.toLowerCase().includes(log.subject_name.toLowerCase())) return true;
+          return false;
+        });
+        const uniqueDates = new Set(filteredLogs.map(l => l.date));
+        teacherSessionCount = uniqueDates.size;
+
+        if (subtitle) {
+          const courseTitle = cfg.course || 'Assigned Course';
+          subtitle.textContent = `${cfg.name || 'Faculty'}: ${teacherSessionCount} Class Session(s) Conducted for ${courseTitle}`;
+        }
+      }
+
+      if (!filteredLogs || filteredLogs.length === 0) {
+        if (isTeacher) {
+          const tName = state.currentUser.first_name ? `Prof. ${state.currentUser.first_name} ${state.currentUser.last_name}` : 'Faculty';
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="3" class="p-8 text-center">
+                <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
+                  <span class="material-symbols-outlined text-[24px]">event_available</span>
+                </div>
+                <div class="font-bold text-sm text-on-surface">0 Classes Conducted Yet</div>
+                <div class="text-xs text-secondary mt-1 max-w-xs mx-auto">
+                  ${tName} has not taken attendance for any class sessions yet this semester.
+                </div>
+                <button onclick="navigateTo('take-attendance')" class="mt-3 px-4 py-2 rounded-xl bg-primary text-white font-bold text-xs shadow-md hover:bg-primary-container active:scale-95 transition-all inline-flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px]">center_focus_strong</span>
+                  <span>Start Multi-Photo AI Scan</span>
+                </button>
+              </td>
+            </tr>
+          `;
+        } else {
+          tbody.innerHTML = '<tr><td colspan="3" class="p-6 text-center text-secondary">No verified attendance records found.</td></tr>';
+        }
+        return;
+      }
+
+      // Map student statistics for cumulative percentage
+      const statsMap = {};
+      students.forEach(s => {
+        if (s.attendance_stats) {
+          statsMap[s.username] = s.attendance_stats;
+          const fullName = `${s.first_name} ${s.last_name}`.trim();
+          if (fullName) statsMap[fullName] = s.attendance_stats;
+        }
+      });
+
+      tbody.innerHTML = filteredLogs.map(log => {
+        const isPresent = log.status === 'PRESENT';
+        const stStats = statsMap[log.student_name] || statsMap[log.student_full_name];
+        const pct = stStats ? `${stStats.percentage}% (${stStats.present_days}/${stStats.total_days} sessions)` : (isPresent ? '100.0%' : '50.0%');
+        const isMe = isStudent && (log.student_name.includes(state.currentUser.first_name) || log.student_name === state.currentUser.username);
+        const subjText = log.subject_code ? `${log.subject_code} - ${log.subject_name}` : (log.subject_name || 'Classroom Session');
+
+        return `
+          <tr class="hover:bg-surface-container-low transition-colors ${isMe ? 'bg-primary-fixed/20 font-semibold' : ''}">
+            <td class="p-3 font-semibold">
+              <div class="text-on-surface flex items-center gap-1.5">
+                <span>${log.student_full_name || log.student_name} (${log.student_roll || 'IT2026'})</span>
+                ${isMe ? '<span class="px-1.5 py-0.2 rounded bg-primary text-white text-[9px] font-bold">YOU</span>' : ''}
+              </div>
+              <div class="text-[10px] text-secondary">${log.date} • <span class="font-semibold text-primary">${subjText}</span> • ${log.verification_method || 'FACE_RECOGNITION'}</div>
+            </td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded-full ${isPresent ? 'bg-emerald-100 text-emerald-800' : 'bg-error-container text-on-error-container'} text-[10px] font-bold">
+                ${log.status}
+              </span>
+            </td>
+            <td class="p-3 font-bold ${isPresent ? 'text-emerald-700' : 'text-error'}">
+              ${pct}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    let webcamStream = null;
+    let currentFacingMode = 'environment'; // Default to back camera for scanning classroom/students
+
+    function updateCameraUI() {
+      const label = document.getElementById('cam-facing-label');
+      if (label) {
+        label.textContent = currentFacingMode === 'environment' ? 'Back Camera' : 'Front Camera';
+      }
+    }
+
+    async function switchCamera() {
+      currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+      updateCameraUI();
+      if (webcamStream) {
+        // Stop current active tracks
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+        // Re-open with new facing mode
+        await startWebcamStream();
+      }
+    }
+
+    async function toggleWebcam() {
+      const container = document.getElementById('webcam-container');
+      const btnText = document.getElementById('webcam-btn-text');
+
+      if (webcamStream) {
+        // Stop active stream
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+        if (container) container.classList.add('hidden');
+        if (btnText) btnText.textContent = 'Open Device Camera';
+      } else {
+        await startWebcamStream();
+      }
+    }
+
+    async function startWebcamStream() {
+      const container = document.getElementById('webcam-container');
+      const video = document.getElementById('webcam-video');
+      const btnText = document.getElementById('webcam-btn-text');
+
+      try {
+        // Try ideal resolution with current facingMode
+        try {
+          webcamStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: currentFacingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          });
+        } catch (e1) {
+          // Fallback to basic facingMode constraint
+          try {
+            webcamStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: currentFacingMode }
+            });
+          } catch (e2) {
+            // Fallback to any generic video stream
+            webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
+          }
+        }
+
+        if (video) {
+          video.srcObject = webcamStream;
+        }
+        if (container) container.classList.remove('hidden');
+        if (btnText) btnText.textContent = 'Close Camera';
+        updateCameraUI();
+      } catch (err) {
+        alert('Unable to access device camera: ' + err.message + '\nYou can also choose photos from your device storage.');
+      }
+    }
+
+    function captureWebcamSnapshot() {
+      const video = document.getElementById('webcam-video');
+      if (!video) return;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Shutter Flash Effect
+      const flash = document.getElementById('webcam-flash-overlay');
+      if (flash) {
+        flash.style.opacity = '0.85';
+        setTimeout(() => { flash.style.opacity = '0'; }, 150);
+      }
+
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        if (!state.stagedFiles) state.stagedFiles = [];
+        const snapNum = state.stagedFiles.length + 1;
+        const file = new File([blob], `classroom_snap_${snapNum}_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        state.stagedFiles.push(file);
+
+        renderStagedFiles();
+
+        // Shutter snap toast notification over video
+        const snapToast = document.getElementById('webcam-snap-toast');
+        const snapToastText = document.getElementById('webcam-snap-toast-text');
+        if (snapToast && snapToastText) {
+          snapToastText.textContent = `Photo #${snapNum} captured! (${state.stagedFiles.length} staged)`;
+          snapToast.classList.remove('hidden');
+          clearTimeout(window._snapToastTimer);
+          window._snapToastTimer = setTimeout(() => {
+            snapToast.classList.add('hidden');
+          }, 2200);
+        }
+
+        // Live snap counter badge
+        const snapCountBadge = document.getElementById('webcam-snap-count');
+        if (snapCountBadge) {
+          snapCountBadge.textContent = `${state.stagedFiles.length} photo${state.stagedFiles.length > 1 ? 's' : ''} snapped`;
+          snapCountBadge.classList.remove('hidden');
+        }
+
+        // Keep the webcam stream open so the teacher can continue clicking multiple photos!
+      }, 'image/jpeg', 0.95);
+    }
+
+    function finishSnapping() {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach(track => track.stop());
+        webcamStream = null;
+      }
+      const container = document.getElementById('webcam-container');
+      const btnText = document.getElementById('webcam-btn-text');
+      if (container) container.classList.add('hidden');
+      if (btnText) btnText.textContent = 'Open Device Camera';
+
+      // Scroll smoothly down to the staged photos
+      const staged = document.getElementById('staged-photos-container');
+      if (staged && !staged.classList.contains('hidden')) {
+        staged.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+
+    function handleClassroomFiles(files) {
+      if (!files || !files.length) return;
+      if (!state.stagedFiles) state.stagedFiles = [];
+
+      const incoming = Array.from(files);
+      incoming.forEach(newFile => {
+        // Prevent exact duplicates
+        const exists = state.stagedFiles.some(f => f.name === newFile.name && f.size === newFile.size);
+        if (!exists) {
+          state.stagedFiles.push(newFile);
+        }
+      });
+
+      renderStagedFiles();
+
+      const fileInput = document.getElementById('classroom-file-input');
+      if (fileInput) fileInput.value = '';
+    }
+
+    function removeStagedFile(index) {
+      if (!state.stagedFiles || index < 0 || index >= state.stagedFiles.length) return;
+      state.stagedFiles.splice(index, 1);
+      if (state.stagedFiles.length === 0) {
+        clearStaged();
+      } else {
+        renderStagedFiles();
+      }
+    }
+
+    function renderStagedFiles() {
+      const container = document.getElementById('staged-photos-container');
+      const itemsList = document.getElementById('staged-photos-items');
+      const count = document.getElementById('photo-count');
+      const callout = document.getElementById('staged-info-callout');
+      const btnProcessText = document.getElementById('btn-process-text');
+      const snapCountBadge = document.getElementById('webcam-snap-count');
+
+      if (!state.stagedFiles || state.stagedFiles.length === 0) {
+        if (container) {
+          container.classList.add('hidden');
+          container.style.display = 'none';
+        }
+        if (callout) callout.classList.add('hidden');
+        if (count) count.textContent = '0';
+        if (btnProcessText) btnProcessText.textContent = 'Process Attendance with AI';
+        if (snapCountBadge) snapCountBadge.classList.add('hidden');
+        return;
+      }
+
+      if (container) {
+        container.classList.remove('hidden');
+        container.style.display = 'block';
+      }
+      if (callout) callout.classList.remove('hidden');
+      if (count) count.textContent = state.stagedFiles.length;
+      if (snapCountBadge) {
+        snapCountBadge.textContent = `${state.stagedFiles.length} photo${state.stagedFiles.length > 1 ? 's' : ''} staged`;
+        snapCountBadge.classList.remove('hidden');
+      }
+      if (btnProcessText) {
+        btnProcessText.textContent = `Process ${state.stagedFiles.length} Photo${state.stagedFiles.length > 1 ? 's' : ''} with AI Face Engine`;
+      }
+
+      if (itemsList) {
+        itemsList.innerHTML = '';
+        state.stagedFiles.forEach((file, idx) => {
+          const reader = new FileReader();
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'p-2.5 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex items-center justify-between text-xs animate-fadeIn';
+
+          const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+          const sizeKb = (file.size / 1024).toFixed(0);
+          const displaySize = file.size > 1024 * 1024 ? `${sizeMb} MB` : `${sizeKb} KB`;
+
+          itemDiv.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-12 h-12 rounded-xl bg-surface-container overflow-hidden shrink-0 flex items-center justify-center relative">
+                <img id="thumb-${idx}" class="w-full h-full object-cover hidden" />
+                <span id="spin-${idx}" class="material-symbols-outlined text-secondary animate-spin">progress_activity</span>
+                <span class="absolute top-0.5 left-0.5 px-1 py-0.2 rounded bg-black/60 text-white text-[9px] font-bold">#${idx + 1}</span>
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold truncate text-on-surface">${file.name}</div>
+                <div class="text-[10px] text-secondary flex items-center gap-1.5 mt-0.5">
+                  <span class="font-medium">${displaySize}</span>
+                  <span>•</span>
+                  <span class="text-primary font-semibold">Angle #${idx + 1}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">Ready</span>
+              <button onclick="removeStagedFile(${idx})" type="button" class="w-7 h-7 rounded-lg bg-surface-container hover:bg-red-50 hover:text-red-600 text-secondary flex items-center justify-center transition-colors" title="Remove this photo">
+                <span class="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            </div>
+          `;
+          itemsList.appendChild(itemDiv);
+
+          reader.onload = (e) => {
+            const img = document.getElementById(`thumb-${idx}`);
+            const spin = document.getElementById(`spin-${idx}`);
+            if (img) {
+              img.src = e.target.result;
+              img.classList.remove('hidden');
+            }
+            if (spin) spin.classList.add('hidden');
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+    }
+
+    async function triggerSampleCapture() {
+      try {
+        const resp1 = await fetch(`${BACKEND_BASE}/media/profiles/Ayush.jpeg`);
+        const blob1 = await resp1.blob();
+        const file1 = new File([blob1], 'classroom_angle_1_ayush.jpg', { type: 'image/jpeg' });
+
+        const resp2 = await fetch(`${BACKEND_BASE}/media/profiles/ShinjanPaul.jpeg`);
+        const blob2 = await resp2.blob();
+        const file2 = new File([blob2], 'classroom_angle_2_shinjan.jpg', { type: 'image/jpeg' });
+
+        const resp3 = await fetch(`${BACKEND_BASE}/media/profiles/4.jpeg`);
+        const blob3 = await resp3.blob();
+        const file3 = new File([blob3], 'classroom_angle_3_biswajit.jpg', { type: 'image/jpeg' });
+
+        handleClassroomFiles([file1, file2, file3]);
+      } catch (err) {
+        console.warn('Could not load demo angles:', err);
+        alert('Could not load demo images. Please click the upload box to choose photos from your device.');
+      }
+    }
+
+    function clearStaged() {
+      const container = document.getElementById('staged-photos-container');
+      const itemsList = document.getElementById('staged-photos-items');
+      const count = document.getElementById('photo-count');
+      const callout = document.getElementById('staged-info-callout');
+      const fileInput = document.getElementById('classroom-file-input');
+      const snapCountBadge = document.getElementById('webcam-snap-count');
+      const btnProcessText = document.getElementById('btn-process-text');
+
+      if (container) {
+        container.classList.add('hidden');
+        container.style.display = 'none';
+      }
+      if (callout) callout.classList.add('hidden');
+      if (itemsList) itemsList.innerHTML = '';
+      if (count) count.textContent = '0';
+      if (fileInput) fileInput.value = '';
+      if (snapCountBadge) {
+        snapCountBadge.classList.add('hidden');
+        snapCountBadge.textContent = '0 snapped';
+      }
+      if (btnProcessText) {
+        btnProcessText.textContent = 'Process Attendance with AI';
+      }
+      state.stagedFiles = [];
+      const progressBox = document.getElementById('scan-progress-box');
+      if (progressBox) progressBox.classList.add('hidden');
+    }
+
+    async function runAiProcessing() {
+      if (!state.stagedFiles || state.stagedFiles.length === 0) {
+        alert('Please select or capture at least one classroom photo first, or click "Stage 3 Demo Angles" to test.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-process-ai');
+      const text = document.getElementById('btn-process-text');
+      btn.disabled = true;
+      text.textContent = 'Analyzing 128-D Biometrics with dlib...';
+
+      // 1. Open the Full-Screen AI Scanning Modal
+      const modal = document.getElementById('ai-scan-modal');
+      const modalBar = document.getElementById('modal-scan-bar');
+      const modalPct = document.getElementById('modal-scan-percentage');
+      const modalFraction = document.getElementById('modal-scan-fraction');
+      const modalTitle = document.getElementById('modal-scan-title');
+      const modalFaces = document.getElementById('modal-scan-faces');
+      const modalStatus = document.getElementById('modal-scan-status');
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        if (modalBar) modalBar.style.width = '10%';
+        if (modalPct) modalPct.textContent = '10%';
+        if (modalFraction) modalFraction.textContent = `0 of ${state.stagedFiles.length} photos`;
+        if (modalTitle) modalTitle.textContent = `Starting AI Scan (${state.stagedFiles.length} Photos)...`;
+        if (modalFaces) modalFaces.textContent = 'Connecting to dlib pipeline...';
+        if (modalStatus) modalStatus.textContent = 'Streaming frames';
+      }
+
+      // 2. Open inline progress box
+      const progressBox = document.getElementById('scan-progress-box');
+      if (progressBox) {
+        progressBox.classList.remove('hidden');
+        const bar = document.getElementById('scan-progress-bar');
+        const pctBadge = document.getElementById('scan-progress-percentage');
+        const label = document.getElementById('scan-progress-label');
+        const detail = document.getElementById('scan-progress-detail');
+        const fraction = document.getElementById('scan-progress-fraction');
+        if (bar) bar.style.width = '10%';
+        if (pctBadge) pctBadge.textContent = '10%';
+        if (label) label.textContent = `Starting AI Biometric Scan of ${state.stagedFiles.length} photo(s)...`;
+        if (detail) detail.textContent = 'Streaming high-resolution frame data to dlib pipeline...';
+        if (fraction) fraction.textContent = `0 / ${state.stagedFiles.length} scanned`;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('class_id', state.selectedClassId);
+        if (state.selectedSubjectId) {
+          formData.append('subject_id', state.selectedSubjectId);
+        }
+        state.stagedFiles.forEach(f => formData.append('photos', f));
+
+        const res = await fetch(`${API_BASE}/attendance/process-photos/`, {
+          method: 'POST',
+          body: formData
+        });
+
+        if (res.ok) {
+          const draft = await res.json();
+          // Display 100% completion in modal and progress bar
+          if (modalBar) modalBar.style.width = '100%';
+          if (modalPct) modalPct.textContent = '100%';
+          if (modalFraction) modalFraction.textContent = `${state.stagedFiles.length} of ${state.stagedFiles.length} photos`;
+          if (modalTitle) modalTitle.textContent = '✅ AI Verification Complete!';
+          if (modalFaces) modalFaces.textContent = `${draft.total_faces_detected || 0} faces recognized`;
+          if (modalStatus) modalStatus.textContent = `${draft.present_count || 0} Present`;
+
+          // Pause for 1.2s so user clearly sees the 100% completion state
+          await new Promise(r => setTimeout(r, 1200));
+
+          if (modal) modal.classList.add('hidden');
+          renderReviewScreen(draft);
+          navigateTo('attendance-review');
+        } else {
+          if (modal) modal.classList.add('hidden');
+          const errData = await res.json().catch(() => ({}));
+          alert('AI Processing Notice: ' + (errData.error || 'No recognized faces found in current photo.'));
+        }
+      } catch (err) {
+        if (modal) modal.classList.add('hidden');
+        console.warn('Backend process error:', err);
+        const queueId = await OfflineDB.queueOfflineScan(state.selectedClassId, state.selectedSubjectId || 1, state.stagedFiles);
+        await checkOfflineQueueStatus();
+        updateNetworkStatus(false);
+        alert('Network unreachable. Your classroom photos have been safely saved to your device\'s IndexedDB Offline Buffer!\n\nThey will automatically sync to Django once the connection is restored.');
+      } finally {
+        btn.disabled = false;
+        text.textContent = 'Process Attendance with AI';
+        if (modal) modal.classList.add('hidden');
+        if (progressBox) {
+          setTimeout(() => progressBox.classList.add('hidden'), 2500);
+        }
+      }
+    }
+
+    function startManualReviewMode() {
+      const students = (state.students && state.students.length) ? state.students : [
+        { id: 1, username: 'ayush_nyas', first_name: 'Ayush', last_name: 'Nyas', roll_number: 'IT202604' },
+        { id: 2, username: 'shinjan_paul', first_name: 'Shinjan', last_name: 'Paul', roll_number: 'IT202601' },
+        { id: 3, username: 'biswajit_sinha', first_name: 'Biswajit', last_name: 'Sinha', roll_number: 'IT202602' },
+        { id: 4, username: 'hammad_akhter', first_name: 'Hammad', last_name: 'Akhter', roll_number: 'IT202603' }
+      ];
+
+      const draft = {
+        total_photos_processed: 0,
+        total_faces_detected: 0,
+        present_count: 0,
+        absent_count: students.length,
+        present_students: [],
+        absent_students: students.map(s => ({
+          id: s.id,
+          name: `${s.first_name} ${s.last_name}`,
+          username: s.username,
+          roll_number: s.roll_number
+        })),
+        match_details: []
+      };
+
+      renderReviewScreen(draft);
+    }
+
+    function renderReviewScreen(draft) {
+      state.attendanceDraft = draft;
+      OfflineDB.saveActiveDraft(draft);
+
+      const emptyState = document.getElementById('review-empty-state');
+      const contentState = document.getElementById('review-content-state');
+      if (emptyState) emptyState.classList.add('hidden');
+      if (contentState) contentState.classList.remove('hidden');
+
+      // Update Bento stats
+      const photosElem = document.getElementById('rev-stat-photos');
+      const facesElem = document.getElementById('rev-stat-faces');
+      const presElem = document.getElementById('rev-stat-present');
+      const absElem = document.getElementById('rev-stat-absent');
+
+      if (photosElem) photosElem.textContent = draft.total_photos_processed;
+      if (facesElem) facesElem.textContent = draft.total_faces_detected;
+      if (presElem) presElem.textContent = draft.present_count;
+      if (absElem) absElem.textContent = draft.absent_count;
+
+      // Update sticky summary
+      const totalCount = (draft.present_count || 0) + (draft.absent_count || 0);
+      const sticky = document.getElementById('sticky-summary');
+      if (sticky) sticky.textContent = `${totalCount} Records (${draft.present_count} Present, ${draft.absent_count} Absent)`;
+
+      // Render student list
+      const roster = document.getElementById('roster-list');
+      if (!roster) return;
+      roster.innerHTML = '';
+
+      const allList = [
+        ...draft.present_students.map(s => ({ ...s, is_present: true })),
+        ...draft.absent_students.map(s => ({ ...s, is_present: false }))
+      ];
+
+      allList.forEach(s => {
+        const match = draft.match_details ? draft.match_details.find(m => m.student_id === s.id) : null;
+        const conf = match ? (match.confidence * 100).toFixed(1) + '%' : (s.is_present ? '92.4%' : '—');
+        const dist = match ? match.distance : (s.is_present ? '0.38' : '—');
+        const initials = s.name.split(' ').map(n => n[0]).join('') || 'ST';
+        const studentObj = state.students.find(st => st.id === s.id || st.username === s.username);
+        const pic = s.profile_picture || studentObj?.profile_picture;
+        const avatarUrl = getMediaUrl(pic);
+
+        const card = document.createElement('div');
+        card.className = 'student-item p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 space-y-2';
+        card.setAttribute('data-status', s.is_present ? 'present' : 'absent');
+        card.setAttribute('data-student-id', s.id);
+        card.setAttribute('data-name', s.username);
+
+        card.innerHTML = `
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="relative w-11 h-11 rounded-full overflow-hidden bg-primary-fixed text-primary shrink-0 flex items-center justify-center font-bold text-xs ring-2 ring-primary/20">
+                ${avatarUrl 
+                  ? `<img src="${avatarUrl}" class="w-full h-full object-cover" alt="${s.name}" onerror="this.style.display='none'"/>` 
+                  : ''}
+                <span class="${avatarUrl ? 'hidden' : ''}">${initials}</span>
+                <span class="status-dot absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full ${s.is_present ? 'bg-emerald-500' : 'bg-error'} flex items-center justify-center text-[10px] text-white z-10">
+                  ${s.is_present ? '✓' : '✗'}
+                </span>
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-xs truncate">${s.name}</div>
+                <div class="text-[11px] text-secondary truncate">Roll: ${s.roll_number || 'IT2026'} • 128-D Enrolled</div>
+              </div>
+            </div>
+            <input type="checkbox" ${s.is_present ? 'checked' : ''} onchange="toggleStudentCard(this)" class="w-5 h-5 accent-emerald-600 cursor-pointer shrink-0"/>
+          </div>
+          <div class="card-footer flex justify-between items-center pt-2 border-t border-outline-variant/20 text-[11px]">
+            <span class="status-pill px-2 py-0.5 rounded-full ${s.is_present ? 'bg-emerald-100 text-emerald-800' : 'bg-error-container text-on-error-container'} font-semibold">
+              • ${s.is_present ? 'Present (AI Match)' : 'Absent'}
+            </span>
+            ${s.is_present 
+              ? `<span class="conf-text font-bold text-secondary">Conf: ${conf} • Dist: ${dist}</span>`
+              : `<button onclick="quickMark(this)" class="px-2 py-0.5 rounded-lg bg-primary text-white text-[10px] font-semibold hover:bg-primary-container">Quick Mark Present</button>`
+            }
+          </div>
+        `;
+        roster.appendChild(card);
+      });
+
+      // Update Filter tabs counts
+      const tabAll = document.getElementById('tab-all');
+      const tabPres = document.getElementById('tab-present');
+      const tabAbs = document.getElementById('tab-absent');
+      if (tabAll) tabAll.textContent = `All (${allList.length})`;
+      if (tabPres) tabPres.textContent = `Present (${draft.present_count})`;
+      if (tabAbs) tabAbs.textContent = `Absent (${draft.absent_count})`;
+    }
+
+    function toggleStudentCard(checkbox) {
+      const card = checkbox.closest('.student-item');
+      const isPresent = checkbox.checked;
+      card.setAttribute('data-status', isPresent ? 'present' : 'absent');
+
+      const dot = card.querySelector('.status-dot');
+      const pill = card.querySelector('.status-pill');
+      const conf = card.querySelector('.conf-text');
+
+      if (isPresent) {
+        dot.className = 'status-dot absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] text-white';
+        dot.textContent = '✓';
+        pill.className = 'status-pill px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold';
+        pill.textContent = '• Present (Manual 1.0)';
+        if (conf) conf.textContent = 'Conf: 100.0% • Manual';
+      } else {
+        dot.className = 'status-dot absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-error flex items-center justify-center text-[10px] text-white';
+        dot.textContent = '✗';
+        pill.className = 'status-pill px-2 py-0.5 rounded-full bg-error-container text-on-error-container font-semibold';
+        pill.textContent = '• Absent';
+        if (conf) conf.textContent = 'Not detected in photos';
+      }
+
+      recalculateStats();
+    }
+
+    function quickMark(btn) {
+      const card = btn.closest('.student-item');
+      const checkbox = card.querySelector('input[type="checkbox"]');
+      checkbox.checked = true;
+      toggleStudentCard(checkbox);
+    }
+
+    function recalculateStats() {
+      const present = document.querySelectorAll('.student-item[data-status="present"]').length;
+      const absent = document.querySelectorAll('.student-item[data-status="absent"]').length;
+      const total = present + absent;
+      const statPres = document.getElementById('rev-stat-present');
+      const statAbs = document.getElementById('rev-stat-absent');
+      const sticky = document.getElementById('sticky-summary');
+      if (statPres) statPres.textContent = present;
+      if (statAbs) statAbs.textContent = absent;
+      if (sticky) sticky.textContent = `${total} Records (${present} Present, ${absent} Absent)`;
+      saveDraftToIndexedDB();
+    }
+
+    function setFilter(f) {
+      document.getElementById('tab-all').className = f === 'all' ? 'py-1.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm' : 'py-1.5 rounded-lg text-secondary';
+      document.getElementById('tab-present').className = f === 'present' ? 'py-1.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm' : 'py-1.5 rounded-lg text-secondary';
+      document.getElementById('tab-absent').className = f === 'absent' ? 'py-1.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm' : 'py-1.5 rounded-lg text-secondary';
+
+      document.querySelectorAll('.student-item').forEach(card => {
+        if (f === 'all' || card.getAttribute('data-status') === f) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    async function confirmToSupabase() {
+      const btn = document.getElementById('btn-confirm-save');
+      const text = document.getElementById('btn-confirm-text');
+      btn.disabled = true;
+      text.textContent = 'Saving to Database...';
+
+      // Gather verified student statuses
+      const records = [];
+      document.querySelectorAll('.student-item').forEach((card, idx) => {
+        const isPresent = card.getAttribute('data-status') === 'present';
+        const stId = parseInt(card.getAttribute('data-student-id')) || (state.students[idx] ? state.students[idx].id : null);
+        if (stId) {
+          records.push({
+            student_id: stId,
+            status: isPresent ? 'PRESENT' : 'ABSENT',
+            confidence: isPresent ? 0.94 : 0.0,
+            is_override: true
+          });
+        }
+      });
+
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+      const payload = {
+        class_id: state.selectedClassId,
+        subject_id: state.selectedSubjectId || 1,
+        date: todayStr,
+        records: records
+      };
+
+      try {
+        const res = await fetch(`${API_BASE}/attendance/confirm/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+          text.textContent = 'Committed to Central DB!';
+          await OfflineDB.clearActiveDraft();
+        } else {
+          await OfflineDB.queueOfflineConfirm(payload);
+          await OfflineDB.clearActiveDraft();
+          await checkOfflineQueueStatus();
+          text.textContent = 'Buffered in IndexedDB!';
+        }
+      } catch (err) {
+        await OfflineDB.queueOfflineConfirm(payload);
+        await OfflineDB.clearActiveDraft();
+        await checkOfflineQueueStatus();
+        text.textContent = 'Buffered in IndexedDB!';
+      }
+
+      // Sync confirmed records directly to Supabase Cloud PostgreSQL
+      if (window.sbClient && records.length) {
+        try {
+          const sbRows = records.map(r => ({
+            class_id: state.selectedClassId || 1,
+            subject_id: state.selectedSubjectId || 1,
+            student_id: r.student_id,
+            date: todayStr,
+            status: r.status,
+            confidence: r.confidence || 0.94,
+            verification_method: 'FACE_RECOGNITION'
+          }));
+          window.sbClient.from('attendance_logs').insert(sbRows).then(({ error }) => {
+            if (!error) console.log('☁️ Synced to Supabase Cloud PostgreSQL table attendance_logs!');
+            else console.warn('Supabase sync note:', error);
+          });
+        } catch (sbE) {
+          console.warn('Supabase sync notice:', sbE);
+        }
+      }
+
+      // Reset active draft and staged files
+      state.attendanceDraft = null;
+      clearStaged();
+      loadBackendData();
+
+      btn.classList.remove('bg-primary');
+      btn.classList.add('bg-emerald-600');
+      setTimeout(() => {
+        btn.disabled = false;
+        navigateTo('history');
+        text.textContent = 'Confirm & Save Attendance';
+        btn.classList.remove('bg-emerald-600');
+        btn.classList.add('bg-primary');
+      }, 1000);
+    }
+
+    async function initApp() {
+      // 0. Initialize IndexedDB Offline Buffer
+      await OfflineDB.init();
+
+      // 1. Instant 0ms Load: Load cached roster from IndexedDB & localStorage FIRST
+      try {
+        const [cachedT, cachedS, cachedC, cachedL] = await Promise.all([
+          OfflineDB.getRoster('teachers'),
+          OfflineDB.getRoster('students'),
+          OfflineDB.getRoster('classes'),
+          OfflineDB.getRoster('attendanceLogs')
+        ]);
+        if (cachedT && cachedT.length) state.teachers = cachedT;
+        if (cachedS && cachedS.length) state.students = cachedS;
+        if (cachedC && cachedC.length) state.classes = cachedC;
+        if (cachedL && cachedL.length) state.attendanceLogs = cachedL;
+
+        const localS = localStorage.getItem('veriface_students');
+        const localL = localStorage.getItem('veriface_logs');
+        if ((!state.students || !state.students.length) && localS) {
+          const parsed = JSON.parse(localS);
+          if (parsed && parsed.length) state.students = parsed;
+        }
+        if ((!state.attendanceLogs || !state.attendanceLogs.length) && localL) {
+          const parsed = JSON.parse(localL);
+          if (parsed && parsed.length) state.attendanceLogs = parsed;
+        }
+      } catch(e) {
+        console.warn('Initial cache load notice:', e);
+      }
+
+      // Initial Render from cached / baseline data
+      renderTeachersList();
+      renderStudentFacultyPicker();
+      renderStudentsList();
+      renderFaceRegistry();
+
+      // Setup network event listeners
+      window.addEventListener('online', () => updateNetworkStatus(true));
+      window.addEventListener('offline', () => updateNetworkStatus(false));
+      updateNetworkStatus(navigator.onLine);
+
+      // 2. Fetch authoritative cloud attendance snapshot from GitHub Pages (cache-busted with timestamp)
+      try {
+        const snapRes = await fetch('attendance_data.json?v=' + Date.now(), { cache: 'no-store' });
+        if (snapRes.ok) {
+          const snapData = await snapRes.json();
+          if (snapData.students && snapData.students.length) {
+            state.students = snapData.students;
+            // Persist fresh cloud snapshot to IndexedDB and localStorage so subsequent visits stay updated!
+            await OfflineDB.setRoster('students', snapData.students);
+            try { localStorage.setItem('veriface_students', JSON.stringify(snapData.students)); } catch(e) {}
+          }
+          if (snapData.attendance_logs && snapData.attendance_logs.length) {
+            state.attendanceLogs = snapData.attendance_logs;
+            await OfflineDB.setRoster('attendanceLogs', snapData.attendance_logs);
+            try { localStorage.setItem('veriface_logs', JSON.stringify(snapData.attendance_logs)); } catch(e) {}
+          }
+          if (snapData.last_updated) {
+            localStorage.setItem('veriface_last_sync_time', snapData.last_updated);
+            const sSync = document.getElementById('student-sync-timestamp');
+            if (sSync) sSync.textContent = `Live Synced: ${snapData.last_updated}`;
+          }
+
+          // Re-render UI with fresh snapshot data
+          renderStudentsList();
+          renderFaceRegistry();
+
+          // If a student is currently active / viewing dashboard, refresh their dashboard immediately!
+          if (state.selectedStudent) {
+            const updated = state.students.find(s => 
+              s.id === state.selectedStudent.id || 
+              s.username.toLowerCase() === state.selectedStudent.username.toLowerCase()
+            );
+            if (updated) {
+              state.selectedStudent = updated;
+              if (state.currentUserRole === 'student') {
+                setupStudentDashboard(updated, state.selectedStudentFaculty);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('Cloud snapshot fetch notice:', e);
+      }
+
+      // 3. Recover active review draft if present
+      try {
+        const savedDraft = await OfflineDB.getActiveDraft();
+        if (savedDraft) {
+          state.attendanceDraft = savedDraft;
+          renderReviewScreen(savedDraft);
+          const banner = document.getElementById('draft-recovered-banner');
+          if (banner) banner.classList.remove('hidden');
+        }
+      } catch(e) {
+        console.warn('Draft recovery notice:', e);
+      }
+
+      // 4. Check offline queue status
+      await checkOfflineQueueStatus();
+
+      // 5. If live backend is reachable, fetch live data
+      await loadBackendData();
+
+      // 6. Initialize Real-Time WebSocket for scanning progress and live attendance alerts
+      initWebSocket();
+
+      // 7. Auto-route to Student Portal if requested via URL param or Hash
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const reqRole = urlParams.get('role');
+        const reqStudent = urlParams.get('student');
+        const hash = (window.location.hash || '').toLowerCase();
+
+        if (reqRole === 'student' || hash === '#student' || reqStudent) {
+          setLoginRole('student');
+          if (reqStudent) {
+            const match = state.students.find(s => 
+              s.username.toLowerCase() === reqStudent.toLowerCase() || 
+              (s.roll_number && s.roll_number.toLowerCase() === reqStudent.toLowerCase())
+            );
+            if (match) {
+              selectStudent(match, null);
+              performLogin();
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('URL routing notice:', err);
+      }
+    }
+
+    // Run on page load
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>

@@ -14,6 +14,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
+  <!-- Supabase Cloud Client (100% Free Forever Tier) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.SUPABASE_URL = 'https://ymcakklhzkuylowlhzms.supabase.co';
+    window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltY2Fra2xoemt1eWxvd2xoem1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2ODQ5MTksImV4cCI6MjEwNDI2MDkxOX0.B7E5E_mtAtOIWKNG0bRVrcg6Z2LOJnMpYtDYc70Xmt4';
+    try {
+      if (window.supabase) {
+        window.sbClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        console.log('⚡ Connected to Supabase Cloud live database!');
+      }
+    } catch (e) {
+      console.warn('Supabase init notice:', e);
+    }
+  </script>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -914,10 +929,20 @@
     const NGROK_HOST = 'famished-savor-seventeen.ngrok-free.dev';
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isGitHub = window.location.hostname.includes('github.io');
+    const isTunnel = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
 
-    const BACKEND_BASE = (window.location.protocol === 'file:') 
-      ? 'http://127.0.0.1:8000' 
-      : (isLocal ? 'http://127.0.0.1:8000' : (isGitHub ? `https://${NGROK_HOST}` : window.location.origin));
+    let BACKEND_BASE = 'http://127.0.0.1:8000';
+    if (isGitHub) {
+      BACKEND_BASE = `https://${NGROK_HOST}`;
+    } else if (isTunnel) {
+      BACKEND_BASE = window.location.origin;
+    } else if (isLocal || window.location.protocol === 'file:') {
+      BACKEND_BASE = 'http://127.0.0.1:8000';
+    } else if (window.location.port === '8080' || window.location.port === '8000') {
+      BACKEND_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+    } else {
+      BACKEND_BASE = window.location.origin;
+    }
     const API_BASE = `${BACKEND_BASE}/api`;
     let activeTab = 'dashboard';
 
@@ -1628,8 +1653,18 @@
       updateWebSocketStatus('connecting');
 
       const isGitHubHost = window.location.hostname.includes('github.io');
-      const protocol = (window.location.protocol === 'https:' || isGitHubHost) ? 'wss:' : 'ws:';
-      const host = isGitHubHost ? 'famished-savor-seventeen.ngrok-free.dev' : ((window.location.host && window.location.protocol.startsWith('http')) ? window.location.host : '127.0.0.1:8000');
+      const isTunnelHost = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
+      const protocol = (window.location.protocol === 'https:' || isGitHubHost || isTunnelHost) ? 'wss:' : 'ws:';
+      let host = '127.0.0.1:8000';
+      if (isGitHubHost) {
+        host = 'famished-savor-seventeen.ngrok-free.dev';
+      } else if (isTunnelHost) {
+        host = window.location.host;
+      } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        host = '127.0.0.1:8000';
+      } else if (window.location.hostname) {
+        host = `${window.location.hostname}:8000`;
+      }
       const wsUrl = `${protocol}//${host}/ws/attendance/`;
 
       try {
@@ -3508,6 +3543,27 @@
         await OfflineDB.clearActiveDraft();
         await checkOfflineQueueStatus();
         text.textContent = 'Buffered in IndexedDB!';
+      }
+
+      // Sync confirmed records directly to Supabase Cloud PostgreSQL
+      if (window.sbClient && records.length) {
+        try {
+          const sbRows = records.map(r => ({
+            class_id: state.selectedClassId || 1,
+            subject_id: state.selectedSubjectId || 1,
+            student_id: r.student_id,
+            date: todayStr,
+            status: r.status,
+            confidence: r.confidence || 0.94,
+            verification_method: 'FACE_RECOGNITION'
+          }));
+          window.sbClient.from('attendance_logs').insert(sbRows).then(({ error }) => {
+            if (!error) console.log('☁️ Synced to Supabase Cloud PostgreSQL table attendance_logs!');
+            else console.warn('Supabase sync note:', error);
+          });
+        } catch (sbE) {
+          console.warn('Supabase sync notice:', sbE);
+        }
       }
 
       // Reset active draft and staged files

@@ -14,6 +14,21 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 
+  <!-- Supabase Cloud Client (100% Free Forever Tier) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    window.SUPABASE_URL = 'https://ymcakklhzkuylowlhzms.supabase.co';
+    window.SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltY2Fra2xoemt1eWxvd2xoem1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg2ODQ5MTksImV4cCI6MjEwNDI2MDkxOX0.B7E5E_mtAtOIWKNG0bRVrcg6Z2LOJnMpYtDYc70Xmt4';
+    try {
+      if (window.supabase) {
+        window.sbClient = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+        console.log('⚡ Connected to Supabase Cloud live database!');
+      }
+    } catch (e) {
+      console.warn('Supabase init notice:', e);
+    }
+  </script>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -65,7 +80,7 @@
   <header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]">
     <div class="h-16 px-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm shadow-inner">
+        <div onclick="promptForBackendUrl()" title="Tap to configure Server or Cloudflare / Ngrok URL" class="w-8 h-8 rounded-lg bg-primary-fixed flex items-center justify-center text-primary font-bold text-sm shadow-inner cursor-pointer active:scale-95 transition-transform">
           VF
         </div>
         <div class="flex flex-col">
@@ -75,7 +90,7 @@
           </div>
           <div class="flex items-center gap-1.5 flex-wrap">
             <span id="header-pulse-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span id="header-connection-status" class="text-[11px] text-on-surface-variant">API Live • 127.0.0.1:8000</span>
+            <span id="header-connection-status" onclick="promptForBackendUrl()" title="Tap to change Server / Cloudflare / Ngrok URL" class="text-[11px] text-on-surface-variant cursor-pointer hover:underline">API Live • 127.0.0.1:8000</span>
             <span class="text-outline-variant/60 text-[10px] hidden sm:inline">•</span>
             <span id="header-ws-pill" class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded-full border border-emerald-200 dark:border-emerald-800">
               <span id="header-ws-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
@@ -914,12 +929,33 @@
     const NGROK_HOST = 'famished-savor-seventeen.ngrok-free.dev';
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isGitHub = window.location.hostname.includes('github.io');
+    const isTunnel = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
 
-    const BACKEND_BASE = (window.location.protocol === 'file:') 
-      ? 'http://127.0.0.1:8000' 
-      : (isLocal ? 'http://127.0.0.1:8000' : (isGitHub ? `https://${NGROK_HOST}` : window.location.origin));
+    let BACKEND_BASE = 'http://127.0.0.1:8000';
+    if (isGitHub) {
+      BACKEND_BASE = `https://${NGROK_HOST}`;
+    } else if (isTunnel) {
+      BACKEND_BASE = window.location.origin;
+    } else if (isLocal || window.location.protocol === 'file:') {
+      BACKEND_BASE = 'http://127.0.0.1:8000';
+    } else if (window.location.port === '8080' || window.location.port === '8000') {
+      BACKEND_BASE = `${window.location.protocol}//${window.location.hostname}:8000`;
+    } else {
+      BACKEND_BASE = window.location.origin;
+    }
     const API_BASE = `${BACKEND_BASE}/api`;
     let activeTab = 'dashboard';
+
+    function promptForBackendUrl() {
+      const current = localStorage.getItem('veriface_backend_override') || BACKEND_BASE;
+      const input = prompt("VeriFace AI • Server Configuration\n\nEnter Django Backend or Tunnel URL (e.g., https://famished-savor-seventeen.ngrok-free.dev or Cloudflare tunnel or http://192.168.X.X:8000):", current);
+      if (input !== null && input.trim()) {
+        const clean = input.trim().replace(/\/+$/, '');
+        localStorage.setItem('veriface_backend_override', clean);
+        alert('Server URL set to:\n' + clean + '\n\nReloading application...');
+        window.location.reload();
+      }
+    }
 
     function getMediaUrl(path) {
       if (!path) return '';
@@ -1628,8 +1664,18 @@
       updateWebSocketStatus('connecting');
 
       const isGitHubHost = window.location.hostname.includes('github.io');
-      const protocol = (window.location.protocol === 'https:' || isGitHubHost) ? 'wss:' : 'ws:';
-      const host = isGitHubHost ? 'famished-savor-seventeen.ngrok-free.dev' : ((window.location.host && window.location.protocol.startsWith('http')) ? window.location.host : '127.0.0.1:8000');
+      const isTunnelHost = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
+      const protocol = (window.location.protocol === 'https:' || isGitHubHost || isTunnelHost) ? 'wss:' : 'ws:';
+      let host = '127.0.0.1:8000';
+      if (isGitHubHost) {
+        host = 'famished-savor-seventeen.ngrok-free.dev';
+      } else if (isTunnelHost) {
+        host = window.location.host;
+      } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        host = '127.0.0.1:8000';
+      } else if (window.location.hostname) {
+        host = `${window.location.hostname}:8000`;
+      }
       const wsUrl = `${protocol}//${host}/ws/attendance/`;
 
       try {
@@ -3508,6 +3554,27 @@
         await OfflineDB.clearActiveDraft();
         await checkOfflineQueueStatus();
         text.textContent = 'Buffered in IndexedDB!';
+      }
+
+      // Sync confirmed records directly to Supabase Cloud PostgreSQL
+      if (window.sbClient && records.length) {
+        try {
+          const sbRows = records.map(r => ({
+            class_id: state.selectedClassId || 1,
+            subject_id: state.selectedSubjectId || 1,
+            student_id: r.student_id,
+            date: todayStr,
+            status: r.status,
+            confidence: r.confidence || 0.94,
+            verification_method: 'FACE_RECOGNITION'
+          }));
+          window.sbClient.from('attendance_logs').insert(sbRows).then(({ error }) => {
+            if (!error) console.log('☁️ Synced to Supabase Cloud PostgreSQL table attendance_logs!');
+            else console.warn('Supabase sync note:', error);
+          });
+        } catch (sbE) {
+          console.warn('Supabase sync notice:', sbE);
+        }
       }
 
       // Reset active draft and staged files

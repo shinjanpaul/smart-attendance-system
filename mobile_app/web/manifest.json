@@ -1,0 +1,11 @@
+{
+  "name": "VeriFace AI Smart Attendance",
+  "short_name": "VeriFace",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0175C2",
+  "theme_color": "#0175C2",
+  "description": "VeriFace AI Smart Attendance Application",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}
