@@ -1,0 +1,13 @@
+.git
+.github
+mobile_app
+android
+ios
+web
+venv
+*.bat
+*.log
+*.png
+*.jpg
+*.jpeg
+*.md
