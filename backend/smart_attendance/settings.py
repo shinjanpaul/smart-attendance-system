@@ -81,10 +81,11 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv(BASE_DIR / '.env')
 
-# Database configuration: PostgreSQL (Support DATABASE_URL or individual parameters)
+# Database configuration: PostgreSQL or SQLite
 DATABASE_URL = os.getenv('DATABASE_URL')
+USE_SQLITE = os.getenv('USE_SQLITE', 'True').lower() in ('true', '1', 't')
 
-if DATABASE_URL:
+if DATABASE_URL and not USE_SQLITE:
     DATABASES = {
         'default': dj_database_url.config(
             default=DATABASE_URL,
@@ -93,19 +94,6 @@ if DATABASE_URL:
         )
     }
 else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME', 'smart_attendance_db'),
-            'USER': os.getenv('DB_USER', 'postgres'),
-            'PASSWORD': os.getenv('DB_PASSWORD', 'postgres'),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '5432'),
-        }
-    }
-
-# Fallback to SQLite if explicitly requested via USE_SQLITE=True
-if os.getenv('USE_SQLITE', 'False').lower() in ('true', '1', 't'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
@@ -128,7 +116,7 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-MEDIA_URL = 'media/'
+MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

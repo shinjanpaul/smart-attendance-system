@@ -3297,7 +3297,8 @@
         } else {
           if (modal) modal.classList.add('hidden');
           const errData = await res.json().catch(() => ({}));
-          alert('AI Processing Notice: ' + (errData.error || 'No recognized faces found in current photo.'));
+          const errMsg = errData.error || errData.detail || `Server returned HTTP ${res.status} (${res.statusText || 'Notice'})`;
+          alert('AI Processing Notice: ' + errMsg);
         }
       } catch (err) {
         if (modal) modal.classList.add('hidden');

@@ -9,36 +9,61 @@ from .models import CustomUser, StudentClass, Subject, AttendanceLog
 def extract_face_embedding_from_file(rel_path):
     """
     Extracts 128-D face embedding using VeriFace AI engine (with EXIF camera rotation correction,
-    HOG upsampled face detector, and 128-D ResNet encoder).
+    multi-path candidate discovery, HOG upsampled face detector, and 128-D ResNet encoder).
     Returns 128-D list or None.
     """
+    if not rel_path:
+        return None
     try:
         from .ai_engine import (
             decode_image_with_exif, generate_image_encodings,
             detect_all_faces, crop_and_preprocess_face, generate_embedding
         )
-        full_path = os.path.join(str(settings.MEDIA_ROOT), rel_path)
-        if not os.path.exists(full_path):
-            full_path = os.path.join(str(settings.BASE_DIR), 'media', rel_path)
-        if not os.path.exists(full_path):
-            candidate = os.path.join(str(settings.BASE_DIR), rel_path)
-            if os.path.exists(candidate):
-                full_path = candidate
-            else:
-                print(f"[AI] Photo file not found at: {full_path}")
-                return None
+        import os
+        from django.conf import settings
+
+        # Normalize relative path: strip leading slashes and optional 'media/'
+        clean_rel = str(rel_path).replace('\\', '/').lstrip('/')
+        if clean_rel.startswith('media/'):
+            clean_rel = clean_rel[6:]
+
+        base_filename = os.path.basename(clean_rel)
+
+        candidates = [
+            os.path.join(str(settings.MEDIA_ROOT), clean_rel),
+            os.path.join(str(settings.MEDIA_ROOT), 'profiles', base_filename),
+            os.path.join(str(settings.BASE_DIR), 'media', clean_rel),
+            os.path.join(str(settings.BASE_DIR), 'media', 'profiles', base_filename),
+            os.path.join(str(settings.BASE_DIR), clean_rel),
+            os.path.join('/app', 'media', clean_rel),
+            os.path.join('/app', 'media', 'profiles', base_filename),
+            str(rel_path)
+        ]
+
+        full_path = None
+        for cand in candidates:
+            if os.path.exists(cand):
+                full_path = cand
+                break
+
+        if not full_path:
+            print(f"[AI] Photo file not found for: {rel_path} (checked {len(candidates)} candidate paths)")
+            return None
 
         with open(full_path, 'rb') as f:
             photo_bytes = f.read()
 
-        img = decode_image_with_exif(photo_bytes)
+        img = decode_image_with_exif(photo_bytes, max_dim=1000)
         if img is None:
             return None
 
         # 1. Try full-frame face encodings directly
         encs = generate_image_encodings(img)
         if encs and len(encs) > 0:
-            return encs[0][1]
+            # Pick largest face in profile photo if multiple detected
+            best_enc = max(encs, key=lambda e: e[0][2] * e[0][3])[1]
+            print(f"[AI] Extracted 128-D embedding directly from {os.path.basename(full_path)}")
+            return best_enc
 
         # 2. Fallback to detect largest face + crop + generate embedding
         bboxes = detect_all_faces(img)
@@ -47,6 +72,7 @@ def extract_face_embedding_from_file(rel_path):
             crop = crop_and_preprocess_face(img, primary_bbox)
             emb = generate_embedding(crop)
             if emb:
+                print(f"[AI] Extracted 128-D embedding via cropped face from {os.path.basename(full_path)}")
                 return emb
 
     except Exception as e:
@@ -272,7 +298,16 @@ def seed_database_complete():
                     print(f"  [AI] Generated 128-D face embedding for {student.username} from {s_info['picture']}")
 
         student.save()
-        print(f"  [SEED] Student Ready: {student.username} (Roll: {s_info['roll']})")
+        print(f"  [SEED] Student Ready: {student.username} (Roll: {s_info['roll']}, Has Face Embedding: {bool(student.face_embedding)})")
+
+    # Double check ALL students: if any student is missing face embedding, try to extract it from profile_picture
+    for st in CustomUser.objects.filter(role='STUDENT'):
+        if not st.face_embedding and st.profile_picture:
+            emb = extract_face_embedding_from_file(str(st.profile_picture))
+            if emb:
+                st.face_embedding = emb
+                st.save(update_fields=['face_embedding'])
+                print(f"  [SEED-FIX] Populated missing face embedding for {st.username}")
 
     # 6. Seed Realistic Past Attendance Sessions only if table is empty
     if AttendanceLog.objects.count() == 0:

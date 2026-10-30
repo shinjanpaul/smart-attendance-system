@@ -119,7 +119,10 @@ class UserViewSet(viewsets.ModelViewSet):
                     pass
 
         if class_id:
-            students = students.filter(student_class_id=class_id)
+            try:
+                students = students.filter(student_class_id=int(class_id))
+            except (ValueError, TypeError):
+                pass
         serializer = self.get_serializer(students, many=True)
         return Response(serializer.data)
 
@@ -190,95 +193,129 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'], url_path='process-photos')
     def process_photos(self, request):
-        class_id = request.data.get('class_id')
-        subject_id = request.data.get('subject_id')
-        photos = request.FILES.getlist('photos')
+        try:
+            class_id = request.data.get('class_id')
+            subject_id = request.data.get('subject_id')
+            photos = request.FILES.getlist('photos')
 
-        if not class_id:
-            return Response({'error': 'class_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
-        if not photos:
-            return Response({'error': 'At least one photo file is required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 1. Query students belonging to the requested class
-        class_students = []
-        if class_id:
-            class_students = list(CustomUser.objects.filter(role='STUDENT', student_class_id=class_id))
-
-        # 2. If no students found under that specific ID, try by class name (e.g. B.Tech IT)
-        if not class_students:
-            target_class = StudentClass.objects.filter(name__icontains='B.Tech IT').first()
-            if target_class:
-                class_students = list(CustomUser.objects.filter(role='STUDENT', student_class=target_class))
-
-        # 3. Universal Fallback: If still empty, match against ALL enrolled students in the database!
-        if not class_students:
-            class_students = list(CustomUser.objects.filter(role='STUDENT'))
-
-        # 4. Ensure EVERY student has their 128-D face embedding populated
-        for s in class_students:
-            if not s.face_embedding and s.profile_picture:
+            # Clean class_id safely
+            clean_class_id = None
+            if class_id and str(class_id).lower() not in ('undefined', 'null', '', 'none'):
                 try:
-                    from .attendance_seeder import extract_face_embedding_from_file
-                    emb = extract_face_embedding_from_file(str(s.profile_picture))
-                    if emb:
-                        s.face_embedding = emb
-                        s.save(update_fields=['face_embedding'])
-                        print(f"[AI] Successfully generated embedding on the fly for {s.username}")
-                except Exception as e:
-                    print(f"[AI] Embedding calculation error for {s.username}: {e}")
-        total_photos = len(photos)
+                    clean_class_id = int(class_id)
+                except (ValueError, TypeError):
+                    clean_class_id = None
 
-        # Broadcast live photo-by-photo progress via WebSockets
-        channel_layer = get_channel_layer()
-        def ws_progress_callback(curr_idx, total_count, faces_in_frame):
+            # Clean subject_id safely
+            clean_subject_id = None
+            if subject_id and str(subject_id).lower() not in ('undefined', 'null', '', 'none'):
+                try:
+                    clean_subject_id = int(subject_id)
+                except (ValueError, TypeError):
+                    clean_subject_id = None
+
+            if not photos:
+                return Response({'error': 'At least one photo file is required for AI attendance scanning.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # 1. Query students belonging to the requested class
+            class_students = []
+            if clean_class_id:
+                class_students = list(CustomUser.objects.filter(role='STUDENT', student_class_id=clean_class_id))
+
+            # 2. If no students found under that specific ID, try by class name (e.g. B.Tech IT)
+            if not class_students:
+                target_class = StudentClass.objects.filter(name__icontains='B.Tech IT').first()
+                if target_class:
+                    class_students = list(CustomUser.objects.filter(role='STUDENT', student_class=target_class))
+                    if not clean_class_id:
+                        clean_class_id = target_class.id
+
+            # 3. Universal Fallback: If still empty, match against ALL enrolled students in the database!
+            if not class_students:
+                class_students = list(CustomUser.objects.filter(role='STUDENT'))
+
+            # 4. Auto-seed if students are missing or have no embeddings
+            if not class_students or not any(s.face_embedding for s in class_students):
+                try:
+                    from .attendance_seeder import seed_database_complete
+                    seed_database_complete()
+                    class_students = list(CustomUser.objects.filter(role='STUDENT'))
+                except Exception as seed_err:
+                    print(f"[AI] Auto-seeding on process_photos: {seed_err}")
+
+            # 5. Ensure EVERY student has their 128-D face embedding populated
+            for s in class_students:
+                if not s.face_embedding and s.profile_picture:
+                    try:
+                        from .attendance_seeder import extract_face_embedding_from_file
+                        emb = extract_face_embedding_from_file(str(s.profile_picture))
+                        if emb:
+                            s.face_embedding = emb
+                            s.save(update_fields=['face_embedding'])
+                            print(f"[AI] Successfully generated embedding on the fly for {s.username}")
+                    except Exception as e:
+                        print(f"[AI] Embedding calculation error for {s.username}: {e}")
+
+            total_photos = len(photos)
+
+            # Broadcast live photo-by-photo progress via WebSockets
+            channel_layer = get_channel_layer()
+            def ws_progress_callback(curr_idx, total_count, faces_in_frame):
+                if channel_layer:
+                    pct = int((curr_idx / total_count) * 100)
+                    try:
+                        async_to_sync(channel_layer.group_send)(
+                            'attendance_updates',
+                            {
+                                'type': 'scan_progress',
+                                'current': curr_idx,
+                                'total': total_count,
+                                'percentage': pct,
+                                'faces_detected': faces_in_frame,
+                                'message': f"Scanning Photo {curr_idx}/{total_count} ({pct}% complete) — {faces_in_frame} face(s) analyzed"
+                            }
+                        )
+                    except Exception:
+                        pass
+                    import time
+                    time.sleep(0.3)
+
+            photo_bytes_list = [p.read() for p in photos]
+            draft_result = process_classroom_photos(
+                photo_bytes_list,
+                class_students,
+                progress_callback=ws_progress_callback
+            )
+
+            # Broadcast scan completion event
             if channel_layer:
-                pct = int((curr_idx / total_count) * 100)
                 try:
                     async_to_sync(channel_layer.group_send)(
                         'attendance_updates',
                         {
                             'type': 'scan_progress',
-                            'current': curr_idx,
-                            'total': total_count,
-                            'percentage': pct,
-                            'faces_detected': faces_in_frame,
-                            'message': f"Scanning Photo {curr_idx}/{total_count} ({pct}% complete) — {faces_in_frame} face(s) analyzed"
+                            'current': total_photos,
+                            'total': total_photos,
+                            'percentage': 100,
+                            'faces_detected': draft_result.get('total_faces_detected', 0),
+                            'message': f"Scan Complete! All {total_photos} photos processed successfully ({draft_result.get('present_count', 0)} present)."
                         }
                     )
                 except Exception:
                     pass
-                import time
-                time.sleep(0.4)
 
-        photo_bytes_list = [p.read() for p in photos]
-        draft_result = process_classroom_photos(
-            photo_bytes_list,
-            class_students,
-            progress_callback=ws_progress_callback
-        )
+            draft_result['class_id'] = clean_class_id or 1
+            draft_result['subject_id'] = clean_subject_id
+            draft_result['date'] = str(timezone.now().date())
 
-        # Broadcast scan completion event
-        if channel_layer:
-            try:
-                async_to_sync(channel_layer.group_send)(
-                    'attendance_updates',
-                    {
-                        'type': 'scan_progress',
-                        'current': total_photos,
-                        'total': total_photos,
-                        'percentage': 100,
-                        'faces_detected': draft_result.get('total_faces_detected', 0),
-                        'message': f"Scan Complete! All {total_photos} photos processed successfully ({draft_result.get('present_count', 0)} present)."
-                    }
-                )
-            except Exception:
-                pass
+            return Response(draft_result, status=status.HTTP_200_OK)
 
-        draft_result['class_id'] = int(class_id)
-        draft_result['subject_id'] = int(subject_id) if subject_id else None
-        draft_result['date'] = str(timezone.now().date())
-
-        return Response(draft_result, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({
+                'error': f"AI Processing Error: {str(e)}"
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['post'], url_path='confirm')
     def confirm_attendance(self, request):

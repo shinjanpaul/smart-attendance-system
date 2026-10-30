@@ -17,10 +17,10 @@ MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.65"))
 import io
 from PIL import Image, ImageOps
 
-def decode_image_with_exif(photo_bytes, max_dim=1600):
+def decode_image_with_exif(photo_bytes, max_dim=1200):
     """
     Decodes image bytes, auto-corrects mobile phone EXIF camera orientation,
-    and downscales if greater than max_dim for fast, accurate dlib HOG inference.
+    and downscales if greater than max_dim for fast, low-memory dlib HOG inference.
     Returns BGR numpy image array.
     """
     try:
@@ -43,7 +43,9 @@ def decode_image_with_exif(photo_bytes, max_dim=1600):
 
 def detect_all_faces(img_array):
     """
-    Detects ALL face bounding boxes in an image using face_recognition (HOG model).
+    Detects ALL face bounding boxes in an image using face_recognition (HOG model)
+    with safe single-scale upsampling and OpenCV Haar Cascade fallback.
+    Prevents Render 512MB RAM OOM crashes by avoiding 2x upsampling.
     Returns list of (x, y, w, h) tuples.
     """
     rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
@@ -58,7 +60,17 @@ def detect_all_faces(img_array):
         w = right - left
         h = bottom - top
         bboxes.append((int(x), int(y), int(w), int(h)))
-        
+
+    if len(bboxes) == 0:
+        try:
+            gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
+            for (x, y, w, h) in faces:
+                bboxes.append((int(x), int(y), int(w), int(h)))
+        except Exception:
+            pass
+
     return bboxes
 
 
@@ -260,13 +272,22 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
 
     for st in class_students:
         name = f"{st.first_name} {st.last_name}".strip() or st.username
+        pic_url = None
+        try:
+            if st.profile_picture and hasattr(st.profile_picture, 'url'):
+                pic_url = st.profile_picture.url
+                if not pic_url.startswith('/') and not pic_url.startswith('http'):
+                    pic_url = '/' + pic_url
+        except Exception:
+            pic_url = None
+
         st_info = {
             'id': st.id,
             'username': st.username,
             'name': name,
             'roll_number': st.roll_number,
             'has_registered_face': bool(st.face_embedding),
-            'profile_picture': st.profile_picture.url if st.profile_picture else None
+            'profile_picture': pic_url
         }
         if st.id in present_student_ids:
             present_students.append(st_info)
