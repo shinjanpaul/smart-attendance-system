@@ -17,42 +17,106 @@ MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.65"))
 import io
 from PIL import Image, ImageOps
 
+def ensure_8bit_rgb(img):
+    """
+    Guarantees that the input is a C-contiguous 8-bit unsigned integer RGB image
+    with exactly 3 channels (H, W, 3), strictly satisfying dlib's is_image_type() check.
+    Prevents dlib 'Unsupported image type, must be 8bit gray or RGB image.' errors.
+    """
+    if img is None:
+        return None
+
+    if not isinstance(img, np.ndarray):
+        img = np.array(img)
+
+    # If 4 channels (RGBA / BGRA), convert to 3 channels RGB
+    if img.ndim == 3 and img.shape[2] == 4:
+        img = cv2.cvtColor(img, cv2.COLOR_RGBA2RGB)
+    elif img.ndim == 2:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    elif img.ndim == 3 and img.shape[2] == 1:
+        img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+    elif img.ndim == 3 and img.shape[2] > 3:
+        img = img[:, :, :3]
+
+    # Ensure dtype is uint8 (8-bit unsigned integer)
+    if img.dtype != np.uint8:
+        if img.dtype in (np.float32, np.float64):
+            if img.max() <= 1.0:
+                img = (img * 255.0).clip(0, 255).astype(np.uint8)
+            else:
+                img = img.clip(0, 255).astype(np.uint8)
+        else:
+            img = img.astype(np.uint8)
+
+    # Strictly ensure C-contiguous memory layout
+    if not img.flags['C_CONTIGUOUS']:
+        img = np.ascontiguousarray(img, dtype=np.uint8)
+
+    return img
+
+
 def decode_image_with_exif(photo_bytes, max_dim=1200):
     """
     Decodes image bytes, auto-corrects mobile phone EXIF camera orientation,
-    and downscales if greater than max_dim for fast, low-memory dlib HOG inference.
-    Returns BGR numpy image array.
+    and downscales if greater than max_dim for fast, low-memory dlib inference.
+    Returns guaranteed 8-bit RGB C-contiguous numpy array with shape (H, W, 3).
     """
+    if not photo_bytes:
+        return None
+
     try:
         pil_img = Image.open(io.BytesIO(photo_bytes))
-        pil_img = ImageOps.exif_transpose(pil_img)
+        try:
+            pil_img = ImageOps.exif_transpose(pil_img)
+        except Exception:
+            pass
+
+        if pil_img.mode != 'RGB':
+            pil_img = pil_img.convert('RGB')
+
         w, h = pil_img.size
         if max(w, h) > max_dim:
             scale = max_dim / float(max(w, h))
-            new_w = int(w * scale)
-            new_h = int(h * scale)
+            new_w = max(1, int(w * scale))
+            new_h = max(1, int(h * scale))
             pil_img = pil_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
-        
-        rgb = np.array(pil_img.convert('RGB'))
-        bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-        return bgr
-    except Exception:
-        nparr = np.frombuffer(photo_bytes, np.uint8)
-        return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+        arr = np.array(pil_img, dtype=np.uint8)
+        return ensure_8bit_rgb(arr)
+
+    except Exception as e:
+        print(f"[AI] PIL decode fallback: {e}")
+        try:
+            nparr = np.frombuffer(photo_bytes, np.uint8)
+            bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if bgr is not None:
+                rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+                return ensure_8bit_rgb(rgb)
+        except Exception as e2:
+            print(f"[AI] OpenCV fallback error: {e2}")
+
+    return None
 
 
-def detect_all_faces(img_array):
+def detect_all_faces(img_rgb):
     """
     Detects ALL face bounding boxes in an image using face_recognition (HOG model)
     with safe single-scale upsampling and OpenCV Haar Cascade fallback.
-    Prevents Render 512MB RAM OOM crashes by avoiding 2x upsampling.
     Returns list of (x, y, w, h) tuples.
     """
-    rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
-    locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=1)
-    if len(locations) == 0:
-        locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=0)
-    
+    img_rgb = ensure_8bit_rgb(img_rgb)
+    if img_rgb is None or img_rgb.size == 0 or img_rgb.shape[0] < 20 or img_rgb.shape[1] < 20:
+        return []
+
+    locations = []
+    try:
+        locations = face_recognition.face_locations(img_rgb, number_of_times_to_upsample=1)
+        if len(locations) == 0:
+            locations = face_recognition.face_locations(img_rgb, number_of_times_to_upsample=0)
+    except Exception as e:
+        print(f"[AI] face_locations error: {e}")
+
     bboxes = []
     for (top, right, bottom, left) in locations:
         x = left
@@ -63,7 +127,7 @@ def detect_all_faces(img_array):
 
     if len(bboxes) == 0:
         try:
-            gray = cv2.cvtColor(img_array, cv2.COLOR_BGR2GRAY)
+            gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
             face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
             faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
             for (x, y, w, h) in faces:
@@ -74,56 +138,60 @@ def detect_all_faces(img_array):
     return bboxes
 
 
-def generate_image_encodings(img_array):
+def generate_image_encodings(img_rgb):
     """
     Detects faces and extracts 128-D dlib ResNet face encodings directly from full image.
-    Uses upsampled HOG detection for live mobile and webcam streams.
     Returns list of (bbox_tuple, 128D_list) tuples.
     """
-    rgb = cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB)
-    
-    # Try upsampled dlib HOG detection (upsample=1 detects faces reliably)
-    locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=1)
-    
-    if len(locations) == 0:
-        # Fallback to standard HOG
-        locations = face_recognition.face_locations(rgb, number_of_times_to_upsample=0)
-
-    if len(locations) == 0:
+    img_rgb = ensure_8bit_rgb(img_rgb)
+    if img_rgb is None or img_rgb.size == 0 or img_rgb.shape[0] < 20 or img_rgb.shape[1] < 20:
         return []
 
-    encodings = face_recognition.face_encodings(rgb, known_face_locations=locations)
-    
-    results = []
-    for loc, enc in zip(locations, encodings):
-        top, right, bottom, left = loc
-        bbox = (int(left), int(top), int(right - left), int(bottom - top))
-        results.append((bbox, enc.astype(np.float32).tolist()))
-        
-    return results
+    try:
+        locations = face_recognition.face_locations(img_rgb, number_of_times_to_upsample=1)
+        if len(locations) == 0:
+            locations = face_recognition.face_locations(img_rgb, number_of_times_to_upsample=0)
+
+        if len(locations) == 0:
+            return []
+
+        encodings = face_recognition.face_encodings(img_rgb, known_face_locations=locations)
+        results = []
+        for loc, enc in zip(locations, encodings):
+            top, right, bottom, left = loc
+            bbox = (int(left), int(top), int(right - left), int(bottom - top))
+            results.append((bbox, enc.astype(np.float32).tolist()))
+
+        return results
+    except Exception as e:
+        print(f"[AI] generate_image_encodings error: {e}")
+        return []
 
 
-def crop_and_preprocess_face(img_array, bbox):
+def crop_and_preprocess_face(img_rgb, bbox):
     """
-    Crops face region with 10% outer padding expansion.
+    Crops face region with 15% outer padding expansion, ensuring bounds and C-contiguous layout.
     """
+    img_rgb = ensure_8bit_rgb(img_rgb)
+    if img_rgb is None or img_rgb.size == 0:
+        return None
+
+    img_h, img_w = img_rgb.shape[:2]
     x, y, w, h = bbox
-    img_h, img_w = img_array.shape[:2]
 
-    pad_w = int(w * 0.1)
-    pad_h = int(h * 0.1)
+    pad_w = int(w * 0.15)
+    pad_h = int(h * 0.15)
 
-    left = max(0, x - pad_w)
-    top = max(0, y - pad_h)
-    right = min(img_w, x + w + pad_w)
-    bottom = min(img_h, y + h + pad_h)
+    left = max(0, min(img_w - 1, x - pad_w))
+    top = max(0, min(img_h - 1, y - pad_h))
+    right = max(left + 10, min(img_w, x + w + pad_w))
+    bottom = max(top + 10, min(img_h, y + h + pad_h))
 
-    crop = img_array[top:bottom, left:right]
-    if crop.size == 0:
-        crop = img_array[y:y+h, x:x+w]
+    crop = img_rgb[top:bottom, left:right]
+    if crop.size == 0 or crop.shape[0] < 10 or crop.shape[1] < 10:
+        return None
 
-    rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-    return rgb
+    return ensure_8bit_rgb(crop)
 
 
 def generate_embedding(face_rgb):
@@ -131,16 +199,25 @@ def generate_embedding(face_rgb):
     Runs dlib face_recognition 128-D model inference on face image.
     Returns 128-D numpy float array as python list.
     """
-    encodings = face_recognition.face_encodings(face_rgb)
-    if len(encodings) > 0:
-        return encodings[0].astype(np.float32).tolist()
-    
-    h, w = face_rgb.shape[:2]
-    if h > 0 and w > 0:
-        loc = [(0, w, h, 0)]
-        encodings = face_recognition.face_encodings(face_rgb, known_face_locations=loc)
+    if face_rgb is None:
+        return []
+    face_rgb = ensure_8bit_rgb(face_rgb)
+    if face_rgb is None or face_rgb.shape[0] < 20 or face_rgb.shape[1] < 20:
+        return []
+
+    try:
+        encodings = face_recognition.face_encodings(face_rgb)
         if len(encodings) > 0:
             return encodings[0].astype(np.float32).tolist()
+
+        h, w = face_rgb.shape[:2]
+        if h >= 20 and w >= 20:
+            loc = [(0, w, h, 0)]
+            encodings = face_recognition.face_encodings(face_rgb, known_face_locations=loc)
+            if len(encodings) > 0:
+                return encodings[0].astype(np.float32).tolist()
+    except Exception as e:
+        print(f"[AI] generate_embedding error: {e}")
 
     return []
 
@@ -232,9 +309,10 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
             bboxes = detect_all_faces(img)
             for bbox in bboxes:
                 crop = crop_and_preprocess_face(img, bbox)
-                emb = generate_embedding(crop)
-                if emb:
-                    face_data.append((bbox, emb))
+                if crop is not None:
+                    emb = generate_embedding(crop)
+                    if emb:
+                        face_data.append((bbox, emb))
 
         if progress_callback:
             try:

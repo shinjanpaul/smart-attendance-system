@@ -162,8 +162,11 @@ class UserViewSet(viewsets.ModelViewSet):
             # Automatically select the largest face in the photo (the primary student subject)
             primary_bbox = max(bboxes, key=lambda b: b[2] * b[3])
             face_crop = crop_and_preprocess_face(img, primary_bbox)
+            if face_crop is None:
+                continue
             emb = generate_embedding(face_crop)
-            valid_embeddings.append(emb)
+            if emb:
+                valid_embeddings.append(emb)
 
         if not valid_embeddings:
             return Response({'error': 'No valid face detected in any of the uploaded registration photos.'}, status=status.HTTP_400_BAD_REQUEST)

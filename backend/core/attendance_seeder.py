@@ -70,10 +70,11 @@ def extract_face_embedding_from_file(rel_path):
         if bboxes and len(bboxes) > 0:
             primary_bbox = max(bboxes, key=lambda b: b[2] * b[3])
             crop = crop_and_preprocess_face(img, primary_bbox)
-            emb = generate_embedding(crop)
-            if emb:
-                print(f"[AI] Extracted 128-D embedding via cropped face from {os.path.basename(full_path)}")
-                return emb
+            if crop is not None:
+                emb = generate_embedding(crop)
+                if emb:
+                    print(f"[AI] Extracted 128-D embedding via cropped face from {os.path.basename(full_path)}")
+                    return emb
 
     except Exception as e:
         print(f"[AI] Face embedding extraction for {rel_path}: {e}")
