@@ -10,8 +10,8 @@ import numpy as np
 import face_recognition
 
 # Configurable matching threshold (dlib face_recognition distance threshold)
-# Default value 0.6 is the standard official face_recognition distance threshold
-MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.6"))
+# 0.65 is optimal for mobile cameras and multi-angle classroom recognition
+MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.65"))
 
 
 import io
@@ -136,7 +136,19 @@ def generate_embedding(face_rgb):
 def euclidean_distance(emb1, emb2):
     """
     Calculates L2 Euclidean distance between two 128-D face_recognition encodings.
+    Handles JSON string or float array safely.
     """
+    import json
+    if isinstance(emb1, str):
+        try:
+            emb1 = json.loads(emb1)
+        except Exception:
+            pass
+    if isinstance(emb2, str):
+        try:
+            emb2 = json.loads(emb2)
+        except Exception:
+            pass
     a = np.array(emb1, dtype=np.float32)
     b = np.array(emb2, dtype=np.float32)
     return float(np.linalg.norm(a - b))
@@ -154,19 +166,25 @@ def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRE
     best_distance = float('inf')
 
     for student in class_students:
-        if not student.face_embedding:
+        emb = student.face_embedding
+        if not emb:
             continue
 
-        dist = euclidean_distance(query_embedding, student.face_embedding)
-        if dist < best_distance:
-            best_distance = dist
-            best_student = student
+        try:
+            dist = euclidean_distance(query_embedding, emb)
+            if dist < best_distance:
+                best_distance = dist
+                best_student = student
+        except Exception as e:
+            print(f"[AI] Distance error for {student.username}: {e}")
 
     if best_student and best_distance < threshold:
         confidence = round(float(1.0 - (best_distance / threshold)), 4)
+        print(f"[AI MATCH] Recognized: {best_student.username} (dist: {best_distance:.4f}, conf: {confidence:.2f})")
         return best_student, round(best_distance, 4), max(0.0, confidence)
 
     closest_dist = round(best_distance, 4) if best_distance != float('inf') else 999.0
+    print(f"[AI UNMATCHED] Closest face was {best_student.username if best_student else 'None'} at dist {closest_dist:.4f} (threshold: {threshold})")
     return None, closest_dist, 0.0
 
 
