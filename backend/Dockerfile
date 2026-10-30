@@ -9,10 +9,11 @@ ENV PORT=8000
 
 WORKDIR /app
 
-# Install minimal system dependencies required for C++ build & OpenCV
+# Install minimal system dependencies required for C++ build, Git (for models), and OpenCV
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
+    git \
     libopenblas-dev \
     liblapack-dev \
     libgl1 \
@@ -25,11 +26,13 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 # Install numpy first (required by dlib bindings)
 RUN pip install --no-cache-dir numpy==1.26.4
 
-# Compile dlib strictly with 1 single thread (prevents memory ballooning over 8GB)
+# Compile dlib with 1 single thread (prevents memory ballooning over 8GB)
 RUN CMAKE_BUILD_PARALLEL_LEVEL=1 pip install --no-cache-dir dlib==19.24.4
 
-# Install official face-recognition models and package without triggering duplicate dlib rebuilds
-RUN pip install --no-cache-dir face-recognition-models>=0.3.0
+# Install official face_recognition_models directly from repository as instructed by log
+RUN pip install --no-cache-dir git+https://github.com/ageitgey/face_recognition_models
+
+# Install face-recognition without recompiling dlib
 RUN pip install --no-cache-dir --no-deps face-recognition==1.3.0
 
 # Copy and install application requirements
