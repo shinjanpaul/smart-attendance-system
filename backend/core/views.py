@@ -80,19 +80,180 @@ class UserViewSet(viewsets.ModelViewSet):
         if not user:
             return Response({'error': f"User '{username}' was not found in the database."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Teachers MUST provide their admin-assigned password
-        if user.role == 'TEACHER':
+        # Teachers and Admins MUST provide their password
+        if user.role in ('TEACHER', 'ADMIN') or user.is_staff or user.is_superuser:
             if not password:
-                return Response({'error': 'Faculty password is required. Please enter the password set in Django Admin.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': f"{user.get_role_display()} password is required."}, status=status.HTTP_400_BAD_REQUEST)
             if not user.check_password(password):
-                return Response({'error': 'Incorrect faculty password. Please verify your password with the department admin.'}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({'error': f"Incorrect {user.get_role_display().lower()} password. Please verify credentials."}, status=status.HTTP_401_UNAUTHORIZED)
 
-        # Students do not require passwords for viewing their attendance score
         serializer = self.get_serializer(user)
         return Response({
             'message': 'Login successful',
             'user': serializer.data,
             'role': user.role
+        }, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.username.lower() == 'admin':
+            return Response({'error': "The master administrator account cannot be deleted."}, status=status.HTTP_400_BAD_REQUEST)
+        u_name = instance.username
+        u_role = instance.role
+        self.perform_destroy(instance)
+        return Response({'message': f"Successfully deleted {u_role.lower()} '{u_name}'."}, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='admin-create-user')
+    def admin_create_user(self, request):
+        role = request.data.get('role', 'STUDENT').upper()
+        username = request.data.get('username', '').strip()
+        first_name = request.data.get('first_name', '').strip()
+        last_name = request.data.get('last_name', '').strip()
+        email = request.data.get('email', '').strip()
+        department = request.data.get('department', 'Information Technology').strip()
+        roll_number = request.data.get('roll_number', '').strip() or None
+        student_class_id = request.data.get('student_class_id')
+        password = request.data.get('password', '').strip()
+        photos = request.FILES.getlist('photos') or request.FILES.getlist('photo')
+
+        if not username:
+            return Response({'error': 'Username is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if CustomUser.objects.filter(username__iexact=username).exists():
+            return Response({'error': f"User with username '{username}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if roll_number and CustomUser.objects.filter(roll_number__iexact=roll_number).exists():
+            return Response({'error': f"Student with roll number '{roll_number}' already exists."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user = CustomUser(
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            role=role,
+            department=department,
+            roll_number=roll_number
+        )
+
+        if role == 'TEACHER':
+            user.is_staff = True
+            user.set_password(password or 'teacher123')
+        elif role == 'ADMIN':
+            user.is_staff = True
+            user.is_superuser = True
+            user.set_password(password or 'admin123')
+        else: # STUDENT
+            if student_class_id:
+                try:
+                    user.student_class_id = int(student_class_id)
+                except (ValueError, TypeError):
+                    pass
+            if not user.student_class:
+                default_class = StudentClass.objects.filter(name__icontains='B.Tech IT').first()
+                user.student_class = default_class
+
+        # Process face photos for student if provided
+        if photos:
+            user.profile_picture = photos[-1]
+            valid_embeddings = []
+            for p_file in photos:
+                try:
+                    p_bytes = p_file.read()
+                    img = decode_image_with_exif(p_bytes)
+                    if img is None:
+                        continue
+                    bboxes = detect_all_faces(img)
+                    if not bboxes:
+                        continue
+                    primary_bbox = max(bboxes, key=lambda b: b[2] * b[3])
+                    crop = crop_and_preprocess_face(img, primary_bbox)
+                    if crop is None:
+                        continue
+                    emb = generate_embedding(crop)
+                    if emb:
+                        valid_embeddings.append(emb)
+                except Exception as e:
+                    print(f"[AI Admin] Photo processing note: {e}")
+
+            if valid_embeddings:
+                avg_emb = np.mean(np.array(valid_embeddings, dtype=np.float32), axis=0)
+                norm = np.linalg.norm(avg_emb)
+                if norm > 0:
+                    avg_emb = avg_emb / norm
+                user.face_embedding = avg_emb.tolist()
+
+        user.save()
+        serializer = self.get_serializer(user)
+        return Response({
+            'message': f"Successfully created {role.lower()} '{user.username}'!",
+            'user': serializer.data
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post', 'patch'], url_path='admin-update-user')
+    def admin_update_user(self, request, pk=None):
+        user = self.get_object()
+        first_name = request.data.get('first_name')
+        last_name = request.data.get('last_name')
+        email = request.data.get('email')
+        department = request.data.get('department')
+        roll_number = request.data.get('roll_number')
+        student_class_id = request.data.get('student_class_id')
+        password = request.data.get('password')
+        photos = request.FILES.getlist('photos') or request.FILES.getlist('photo')
+
+        if first_name is not None:
+            user.first_name = first_name.strip()
+        if last_name is not None:
+            user.last_name = last_name.strip()
+        if email is not None:
+            user.email = email.strip()
+        if department is not None:
+            user.department = department.strip()
+        if roll_number is not None and user.role == 'STUDENT':
+            user.roll_number = roll_number.strip() or None
+        if student_class_id is not None and user.role == 'STUDENT':
+            try:
+                user.student_class_id = int(student_class_id)
+            except (ValueError, TypeError):
+                pass
+
+        if password and str(password).strip():
+            user.set_password(str(password).strip())
+
+        if photos:
+            user.profile_picture = photos[-1]
+            valid_embeddings = []
+            for p_file in photos:
+                try:
+                    p_bytes = p_file.read()
+                    img = decode_image_with_exif(p_bytes)
+                    if img is None:
+                        continue
+                    bboxes = detect_all_faces(img)
+                    if not bboxes:
+                        continue
+                    primary_bbox = max(bboxes, key=lambda b: b[2] * b[3])
+                    crop = crop_and_preprocess_face(img, primary_bbox)
+                    if crop is None:
+                        continue
+                    emb = generate_embedding(crop)
+                    if emb:
+                        valid_embeddings.append(emb)
+                except Exception as e:
+                    print(f"[AI Admin] Photo update note: {e}")
+
+            if valid_embeddings:
+                avg_emb = np.mean(np.array(valid_embeddings, dtype=np.float32), axis=0)
+                norm = np.linalg.norm(avg_emb)
+                if norm > 0:
+                    avg_emb = avg_emb / norm
+                user.face_embedding = avg_emb.tolist()
+
+        user.save()
+        serializer = self.get_serializer(user)
+        return Response({
+            'message': f"Successfully updated '{user.username}'!",
+            'user': serializer.data
         }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'])

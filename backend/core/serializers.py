@@ -25,9 +25,27 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name', 'role', 
             'department', 'roll_number', 'student_class', 'student_class_name', 
-            'has_registered_face', 'profile_picture', 'attendance_stats'
+            'has_registered_face', 'profile_picture', 'attendance_stats', 'password'
         ]
-        extra_kwargs = {'password': {'write_only': True}}
+        extra_kwargs = {'password': {'write_only': True, 'required': False}}
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        user = super().create(validated_data)
+        if password:
+            user.set_password(password)
+        elif user.role in ('TEACHER', 'ADMIN'):
+            user.set_password('teacher123' if user.role == 'TEACHER' else 'admin123')
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        user = super().update(instance, validated_data)
+        if password:
+            user.set_password(password)
+            user.save()
+        return user
 
     def get_has_registered_face(self, obj):
         return bool(obj.face_embedding)
