@@ -174,7 +174,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 norm = np.linalg.norm(avg_emb)
                 if norm > 0:
                     avg_emb = avg_emb / norm
-                user.face_embedding = avg_emb.tolist()
+                # Multi-angle biometric bank: store all individual angles + centroid
+                all_embs = [e for e in valid_embeddings]
+                all_embs.append(avg_emb.tolist())
+                user.face_embedding = all_embs
 
         user.save()
         serializer = self.get_serializer(user)
@@ -235,7 +238,10 @@ class UserViewSet(viewsets.ModelViewSet):
                 norm = np.linalg.norm(avg_emb)
                 if norm > 0:
                     avg_emb = avg_emb / norm
-                user.face_embedding = avg_emb.tolist()
+                # Multi-angle biometric bank: store all individual angles + centroid
+                all_embs = [e for e in valid_embeddings]
+                all_embs.append(avg_emb.tolist())
+                user.face_embedding = all_embs
 
         user.save()
         serializer = self.get_serializer(user)
@@ -318,8 +324,10 @@ class UserViewSet(viewsets.ModelViewSet):
         if norm > 0:
             avg_emb = avg_emb / norm
 
-        final_embedding = avg_emb.tolist()
-        student.face_embedding = final_embedding
+        # Multi-angle biometric bank: store all individual angles + centroid
+        all_embs = [e for e in valid_embeddings]
+        all_embs.append(avg_emb.tolist())
+        student.face_embedding = all_embs
         student.profile_picture = last_photo_file
         student.save()
 
@@ -327,7 +335,7 @@ class UserViewSet(viewsets.ModelViewSet):
             'message': f'Face embedding successfully registered for {student.username} using {len(valid_embeddings)} photo(s)!',
             'student_id': student.id,
             'photos_processed': len(valid_embeddings),
-            'embedding_length': len(final_embedding)
+            'angles_enrolled': len(all_embs)
         }, status=status.HTTP_200_OK)
 
 

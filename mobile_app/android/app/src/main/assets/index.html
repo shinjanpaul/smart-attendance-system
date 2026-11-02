@@ -90,7 +90,7 @@
           </div>
           <div class="flex items-center gap-1.5 flex-wrap">
             <span id="header-pulse-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span id="header-connection-status" onclick="promptForBackendUrl()" title="Tap to change Server / Cloudflare / Ngrok URL" class="text-[11px] text-on-surface-variant cursor-pointer hover:underline">API Live • 127.0.0.1:8000</span>
+            <span id="header-connection-status" onclick="promptForBackendUrl()" title="Tap to change Server / Cloudflare / Ngrok URL" class="text-[11px] text-on-surface-variant cursor-pointer hover:underline">API Connecting...</span>
             <span class="text-outline-variant/60 text-[10px] hidden sm:inline">•</span>
             <span id="header-ws-pill" class="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 rounded-full border border-emerald-200 dark:border-emerald-800">
               <span id="header-ws-dot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
@@ -1538,7 +1538,12 @@
 
       if (isOnline) {
         if (pulseDot) pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
-        if (connStatus) connStatus.textContent = isGitHub ? 'Cloud Web • 24/7 Active' : 'API Live • 127.0.0.1:8000';
+        let hostDisplay = 'Cloud Live';
+        try {
+          const u = new URL(BACKEND_BASE);
+          hostDisplay = (u.hostname === '127.0.0.1' || u.hostname === 'localhost') ? '127.0.0.1:8000' : 'Render Cloud';
+        } catch(e) {}
+        if (connStatus) connStatus.textContent = `API Live • ${hostDisplay}`;
         if (dbStatus) dbStatus.textContent = isGitHub ? 'GitHub Pages 24/7' : 'Django Live • DB Connected';
         if (statusElem && state.teachers.length) statusElem.textContent = `${state.teachers.length} Live Professors in DB`;
         if (studentFacStatus && state.teachers.length) studentFacStatus.textContent = `${state.teachers.length} Live Professors in DB`;

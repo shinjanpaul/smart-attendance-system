@@ -10,8 +10,8 @@ import numpy as np
 import face_recognition
 
 # Configurable matching threshold (dlib face_recognition distance threshold)
-# 0.68 is optimal for mobile cameras and multi-angle classroom recognition
-MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.68"))
+# 0.72 is optimal for real-world mobile selfie cameras, varying lighting, and multi-angle recognition
+MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.72"))
 
 
 import io
@@ -341,7 +341,7 @@ def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRE
     Returns (best_student_user, best_distance, confidence_score) or (None, actual_closest_distance, 0.0)
     """
     if not query_embedding:
-        return None, 999.0, 0.0
+        return None, 999.0, 0.0, None
 
     best_student = None
     best_distance = float('inf')
@@ -352,7 +352,20 @@ def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRE
             continue
 
         try:
-            dist = euclidean_distance(query_embedding, emb)
+            # Handle JSON string representation safely
+            if isinstance(emb, str):
+                import json
+                try:
+                    emb = json.loads(emb)
+                except Exception:
+                    pass
+
+            # Multi-angle biometric bank support: if emb is a list of embeddings [[...], [...]]
+            if isinstance(emb, list) and len(emb) > 0 and isinstance(emb[0], list):
+                dist = min(euclidean_distance(query_embedding, single_emb) for single_emb in emb if single_emb)
+            else:
+                dist = euclidean_distance(query_embedding, emb)
+
             if dist < best_distance:
                 best_distance = dist
                 best_student = student
@@ -362,11 +375,11 @@ def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRE
     if best_student and best_distance < threshold:
         confidence = round(float(1.0 - (best_distance / threshold)), 4)
         print(f"[AI MATCH] Recognized: {best_student.username} (dist: {best_distance:.4f}, conf: {confidence:.2f})")
-        return best_student, round(best_distance, 4), max(0.0, confidence)
+        return best_student, round(best_distance, 4), max(0.0, confidence), best_student
 
     closest_dist = round(best_distance, 4) if best_distance != float('inf') else 999.0
     print(f"[AI UNMATCHED] Closest face was {best_student.username if best_student else 'None'} at dist {closest_dist:.4f} (threshold: {threshold})")
-    return None, closest_dist, 0.0
+    return None, closest_dist, 0.0, best_student
 
 
 def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_THRESHOLD, progress_callback=None):
@@ -416,7 +429,7 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
                 pass
 
         for bbox, embedding in face_data:
-            matched_student, dist, conf = match_face_to_students(embedding, class_students, threshold=threshold)
+            matched_student, dist, conf, closest_st = match_face_to_students(embedding, class_students, threshold=threshold)
 
             if matched_student:
                 present_student_ids.add(matched_student.id)
@@ -430,12 +443,14 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
                 })
             else:
                 unmatched_faces_count += 1
+                closest_name = f"{closest_st.first_name} {closest_st.last_name}".strip() if closest_st else "None"
                 match_details.append({
                     'photo_index': idx + 1,
                     'student_id': None,
                     'student_name': "Unmatched Face",
                     'roll_number': None,
                     'distance': dist,
+                    'closest_candidate': closest_name,
                     'confidence': 0.0
                 })
 
