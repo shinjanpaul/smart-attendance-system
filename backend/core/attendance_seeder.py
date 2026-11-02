@@ -313,6 +313,14 @@ def seed_database_complete():
     # 6. Seed Realistic Past Attendance Sessions only if table is empty
     if AttendanceLog.objects.count() == 0:
         seed_realistic_attendance()
+
+    # 7. Restore any user-enrolled face embeddings from Supabase Cloud (persistent backup)
+    try:
+        from .supabase_sync import pull_embeddings_from_supabase
+        pull_embeddings_from_supabase()
+    except Exception as e:
+        print(f"[SEED] Supabase pull notice: {e}")
+
     print("[SUCCESS] All cloud database records initialized successfully!")
 
 def seed_realistic_attendance():

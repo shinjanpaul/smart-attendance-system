@@ -180,6 +180,12 @@ class UserViewSet(viewsets.ModelViewSet):
                 user.face_embedding = all_embs
 
         user.save()
+        if user.face_embedding:
+            try:
+                from .supabase_sync import push_embedding_to_supabase
+                push_embedding_to_supabase(user.username, user.face_embedding)
+            except Exception:
+                pass
         serializer = self.get_serializer(user)
         return Response({
             'message': f"Successfully created {role.lower()} '{user.username}'!",
@@ -244,6 +250,12 @@ class UserViewSet(viewsets.ModelViewSet):
                 user.face_embedding = all_embs
 
         user.save()
+        if user.face_embedding:
+            try:
+                from .supabase_sync import push_embedding_to_supabase
+                push_embedding_to_supabase(user.username, user.face_embedding)
+            except Exception:
+                pass
         serializer = self.get_serializer(user)
         return Response({
             'message': f"Successfully updated '{user.username}'!",
@@ -318,6 +330,11 @@ class UserViewSet(viewsets.ModelViewSet):
 
             student.face_embedding = existing
             student.save()
+            try:
+                from .supabase_sync import push_embedding_to_supabase
+                push_embedding_to_supabase(student.username, student.face_embedding)
+            except Exception:
+                pass
             return Response({
                 'message': f"Successfully linked camera face vector to {student.username}!",
                 'student_id': student.id,
@@ -356,6 +373,11 @@ class UserViewSet(viewsets.ModelViewSet):
         student.face_embedding = all_embs
         student.profile_picture = last_photo_file
         student.save()
+        try:
+            from .supabase_sync import push_embedding_to_supabase
+            push_embedding_to_supabase(student.username, student.face_embedding)
+        except Exception:
+            pass
 
         return Response({
             'message': f'Face embedding successfully registered for {student.username} using {len(valid_embeddings)} photo(s)!',
@@ -404,6 +426,14 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
                     all_students = list(CustomUser.objects.filter(role='STUDENT'))
                 except Exception as seed_err:
                     print(f"[AI] Auto-seeding on process_photos: {seed_err}")
+
+            # Pull cloud biometrics from Supabase if available
+            try:
+                from .supabase_sync import pull_embeddings_from_supabase
+                pull_embeddings_from_supabase()
+                all_students = list(CustomUser.objects.filter(role='STUDENT'))
+            except Exception:
+                pass
 
             # 2. Ensure EVERY enrolled student has their 128-D face embedding populated
             for s in all_students:
