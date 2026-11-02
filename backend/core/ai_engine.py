@@ -121,6 +121,20 @@ def generate_image_encodings(img_rgb):
             locations = face_recognition.face_locations(frame, number_of_times_to_upsample=0)
             if len(locations) == 0:
                 locations = face_recognition.face_locations(frame, number_of_times_to_upsample=1)
+            if len(locations) == 0 and max(fh, fw) >= 600:
+                # Scale pyramid for close-up selfies where face exceeds dlib HOG window
+                scale_factor = 600.0 / float(max(fh, fw))
+                small_frame = cv2.resize(frame, (0, 0), fx=scale_factor, fy=scale_factor)
+                small_frame = ensure_8bit_rgb(small_frame)
+                small_locs = face_recognition.face_locations(small_frame, number_of_times_to_upsample=0)
+                inv_scale = 1.0 / scale_factor
+                for s_top, s_right, s_bottom, s_left in small_locs:
+                    locations.append((
+                        max(0, int(s_top * inv_scale)),
+                        min(fw, int(s_right * inv_scale)),
+                        min(fh, int(s_bottom * inv_scale)),
+                        max(0, int(s_left * inv_scale))
+                    ))
         except Exception as e:
             print(f"[AI] face_locations error: {e}")
 
@@ -182,11 +196,20 @@ def generate_image_encodings(img_rgb):
             bbox = (int(left), int(top), int(right - left), int(bottom - top))
             enc = None
             try:
-                encs = face_recognition.face_encodings(frame, known_face_locations=[loc])
+                encs = face_recognition.face_encodings(frame, known_face_locations=[loc], model="small")
                 if len(encs) > 0:
                     enc = encs[0].astype(np.float32).tolist()
-            except Exception as e:
-                pass
+                else:
+                    encs = face_recognition.face_encodings(frame, known_face_locations=[loc], model="large")
+                    if len(encs) > 0:
+                        enc = encs[0].astype(np.float32).tolist()
+            except Exception:
+                try:
+                    encs = face_recognition.face_encodings(frame, known_face_locations=[loc])
+                    if len(encs) > 0:
+                        enc = encs[0].astype(np.float32).tolist()
+                except Exception:
+                    pass
 
             # Fallback to cropped patch embedding with full 68-point dlib context
             if not enc:
@@ -307,14 +330,27 @@ def generate_embedding(face_rgb):
         return []
 
     try:
-        encodings = face_recognition.face_encodings(face_rgb)
+        # Upscale smaller face crops to at least 160x160 for dlib 68-point landmark reliability
+        h, w = face_rgb.shape[:2]
+        if h < 160 or w < 160:
+            scale = max(160.0 / float(h), 160.0 / float(w))
+            face_rgb = cv2.resize(face_rgb, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_CUBIC)
+            face_rgb = ensure_8bit_rgb(face_rgb)
+
+        try:
+            encodings = face_recognition.face_encodings(face_rgb, model="small")
+        except Exception:
+            encodings = face_recognition.face_encodings(face_rgb)
         if len(encodings) > 0:
             return encodings[0].astype(np.float32).tolist()
 
         h, w = face_rgb.shape[:2]
         if h >= 20 and w >= 20:
             loc = [(0, w, h, 0)]
-            encodings = face_recognition.face_encodings(face_rgb, known_face_locations=loc)
+            try:
+                encodings = face_recognition.face_encodings(face_rgb, known_face_locations=loc, model="small")
+            except Exception:
+                encodings = face_recognition.face_encodings(face_rgb, known_face_locations=loc)
             if len(encodings) > 0:
                 return encodings[0].astype(np.float32).tolist()
     except Exception as e:

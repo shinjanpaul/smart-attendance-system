@@ -14,7 +14,12 @@ def serve_frontend(request):
     for p in candidates:
         if p.exists():
             with open(p, 'r', encoding='utf-8') as f:
-                return HttpResponse(f.read(), content_type='text/html')
+                content = f.read()
+                resp = HttpResponse(content, content_type='text/html')
+                resp['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+                resp['Pragma'] = 'no-cache'
+                resp['Expires'] = '0'
+                return resp
     return HttpResponse('Frontend file not found', status=404)
 
 urlpatterns = [
