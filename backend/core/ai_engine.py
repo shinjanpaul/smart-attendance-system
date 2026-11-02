@@ -317,7 +317,7 @@ def generate_embedding(face_rgb):
 def euclidean_distance(emb1, emb2):
     """
     Calculates L2 Euclidean distance between two 128-D face_recognition encodings.
-    Handles JSON string or float array safely.
+    Handles JSON string, float array, or nested multi-vector array safely.
     """
     import json
     if isinstance(emb1, str):
@@ -330,9 +330,28 @@ def euclidean_distance(emb1, emb2):
             emb2 = json.loads(emb2)
         except Exception:
             pass
-    a = np.array(emb1, dtype=np.float32)
-    b = np.array(emb2, dtype=np.float32)
-    return float(np.linalg.norm(a - b))
+
+    a = np.array(emb1, dtype=np.float32).reshape(-1)
+    b = np.array(emb2, dtype=np.float32).reshape(-1)
+
+    if a.size == 0 or b.size == 0:
+        return 999.0
+
+    if a.shape[0] == 128 and b.shape[0] == 128:
+        return float(np.linalg.norm(a - b))
+
+    # If b is a matrix of multiple vectors (N*128), calculate min distance against each 128-D angle
+    if a.shape[0] == 128 and b.shape[0] % 128 == 0 and b.shape[0] > 128:
+        vectors = b.reshape(-1, 128)
+        dists = [float(np.linalg.norm(a - v)) for v in vectors]
+        return min(dists) if dists else 999.0
+
+    # Fallback to general norm
+    min_len = min(a.shape[0], b.shape[0])
+    if min_len >= 128:
+        return float(np.linalg.norm(a[:128] - b[:128]))
+
+    return 999.0
 
 
 def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRESHOLD):
