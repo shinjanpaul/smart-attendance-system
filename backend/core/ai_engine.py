@@ -56,10 +56,10 @@ def ensure_8bit_rgb(img):
     return img
 
 
-def decode_image_with_exif(photo_bytes, max_dim=1600):
+def decode_image_with_exif(photo_bytes, max_dim=1200):
     """
     Decodes image bytes, auto-corrects mobile phone EXIF camera orientation,
-    and downscales if greater than max_dim (1600px retains fine classroom face details).
+    and scales safely to max_dim=1200 (prevents memory exhaustion while preserving facial landmarks).
     Returns guaranteed 8-bit RGB C-contiguous numpy array with shape (H, W, 3).
     """
     if not photo_bytes:
@@ -103,10 +103,10 @@ def generate_image_encodings(img_rgb):
     """
     Robust Multi-Scale & Orientation-Tolerant Face Detection & 128-D ResNet Extraction:
     1. Ensures 8-bit C-contiguous RGB layout.
-    2. Runs dlib HOG (upsample=1).
-    3. If 0 faces found, runs dlib HOG (upsample=2) for smaller/farther classroom faces.
-    4. If 0 faces found, runs OpenCV Haar Cascade (frontal default + frontal alt2) directly on full frame with 15% landmark context padding.
-    5. If 0 faces found, tests 90-degree rotations (auto-correcting mobile photos with stripped EXIF orientation).
+    2. Runs dlib HOG (upsample=0 for fast native resolution).
+    3. If 0 faces found, runs dlib HOG (upsample=1) for smaller/farther faces.
+    4. If 0 faces found, runs OpenCV Haar Cascade with CLAHE illumination enhancement.
+    5. If 0 faces found, tests 90-degree rotations (auto-correcting mobile photos with stripped EXIF).
     Returns list of (bbox_tuple, 128D_list) tuples.
     """
     img_rgb = ensure_8bit_rgb(img_rgb)
@@ -117,23 +117,32 @@ def generate_image_encodings(img_rgb):
         fh, fw = frame.shape[:2]
         locations = []
         try:
-            locations = face_recognition.face_locations(frame, number_of_times_to_upsample=1)
+            # First try native resolution (upsample=0): fast and avoids memory spikes
+            locations = face_recognition.face_locations(frame, number_of_times_to_upsample=0)
             if len(locations) == 0:
-                locations = face_recognition.face_locations(frame, number_of_times_to_upsample=2)
+                locations = face_recognition.face_locations(frame, number_of_times_to_upsample=1)
         except Exception as e:
             print(f"[AI] face_locations error: {e}")
 
-        # Haar cascade fallback directly on full frame
+        # Haar cascade fallback with CLAHE contrast enhancement
         if len(locations) == 0:
             try:
                 gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-                cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-                faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(25, 25))
-                if len(faces) == 0:
-                    alt2_path = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
-                    if os.path.exists(alt2_path):
-                        cascade_alt2 = cv2.CascadeClassifier(alt2_path)
-                        faces = cascade_alt2.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(25, 25))
+                try:
+                    clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+                    gray = clahe.apply(gray)
+                except Exception:
+                    pass
+
+                faces = []
+                for cascade_name in ('haarcascade_frontalface_default.xml', 'haarcascade_frontalface_alt2.xml'):
+                    cascade_path = cv2.data.haarcascades + cascade_name
+                    if os.path.exists(cascade_path):
+                        cascade = cv2.CascadeClassifier(cascade_path)
+                        detected = cascade.detectMultiScale(gray, scaleFactor=1.08, minNeighbors=3, minSize=(20, 20))
+                        if len(detected) > 0:
+                            faces = detected
+                            break
 
                 for (fx, fy, f_w, f_h) in faces:
                     pad_w = int(f_w * 0.15)
