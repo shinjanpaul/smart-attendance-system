@@ -162,16 +162,10 @@ class UserViewSet(viewsets.ModelViewSet):
                     img = decode_image_with_exif(p_bytes)
                     if img is None:
                         continue
-                    bboxes = detect_all_faces(img)
-                    if not bboxes:
-                        continue
-                    primary_bbox = max(bboxes, key=lambda b: b[2] * b[3])
-                    crop = crop_and_preprocess_face(img, primary_bbox)
-                    if crop is None:
-                        continue
-                    emb = generate_embedding(crop)
-                    if emb:
-                        valid_embeddings.append(emb)
+                    encs = generate_image_encodings(img)
+                    if encs and len(encs) > 0:
+                        primary_enc = max(encs, key=lambda e: e[0][2] * e[0][3])[1]
+                        valid_embeddings.append(primary_enc)
                 except Exception as e:
                     print(f"[AI Admin] Photo processing note: {e}")
 
@@ -229,16 +223,10 @@ class UserViewSet(viewsets.ModelViewSet):
                     img = decode_image_with_exif(p_bytes)
                     if img is None:
                         continue
-                    bboxes = detect_all_faces(img)
-                    if not bboxes:
-                        continue
-                    primary_bbox = max(bboxes, key=lambda b: b[2] * b[3])
-                    crop = crop_and_preprocess_face(img, primary_bbox)
-                    if crop is None:
-                        continue
-                    emb = generate_embedding(crop)
-                    if emb:
-                        valid_embeddings.append(emb)
+                    encs = generate_image_encodings(img)
+                    if encs and len(encs) > 0:
+                        primary_enc = max(encs, key=lambda e: e[0][2] * e[0][3])[1]
+                        valid_embeddings.append(primary_enc)
                 except Exception as e:
                     print(f"[AI Admin] Photo update note: {e}")
 
@@ -316,18 +304,10 @@ class UserViewSet(viewsets.ModelViewSet):
             if img is None:
                 continue
 
-            bboxes = detect_all_faces(img)
-            if len(bboxes) == 0:
-                continue
-
-            # Automatically select the largest face in the photo (the primary student subject)
-            primary_bbox = max(bboxes, key=lambda b: b[2] * b[3])
-            face_crop = crop_and_preprocess_face(img, primary_bbox)
-            if face_crop is None:
-                continue
-            emb = generate_embedding(face_crop)
-            if emb:
-                valid_embeddings.append(emb)
+            encs = generate_image_encodings(img)
+            if encs and len(encs) > 0:
+                primary_enc = max(encs, key=lambda e: e[0][2] * e[0][3])[1]
+                valid_embeddings.append(primary_enc)
 
         if not valid_embeddings:
             return Response({'error': 'No valid face detected in any of the uploaded registration photos.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -381,34 +361,18 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
             if not photos:
                 return Response({'error': 'At least one photo file is required for AI attendance scanning.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # 1. Query students belonging to the requested class
-            class_students = []
-            if clean_class_id:
-                class_students = list(CustomUser.objects.filter(role='STUDENT', student_class_id=clean_class_id))
-
-            # 2. If no students found under that specific ID, try by class name (e.g. B.Tech IT)
-            if not class_students:
-                target_class = StudentClass.objects.filter(name__icontains='B.Tech IT').first()
-                if target_class:
-                    class_students = list(CustomUser.objects.filter(role='STUDENT', student_class=target_class))
-                    if not clean_class_id:
-                        clean_class_id = target_class.id
-
-            # 3. Universal Fallback: If still empty, match against ALL enrolled students in the database!
-            if not class_students:
-                class_students = list(CustomUser.objects.filter(role='STUDENT'))
-
-            # 4. Auto-seed if students are missing or have no embeddings
-            if not class_students or not any(s.face_embedding for s in class_students):
+            # 1. Fetch ALL enrolled students in the database
+            all_students = list(CustomUser.objects.filter(role='STUDENT'))
+            if not all_students or not any(s.face_embedding for s in all_students):
                 try:
                     from .attendance_seeder import seed_database_complete
                     seed_database_complete()
-                    class_students = list(CustomUser.objects.filter(role='STUDENT'))
+                    all_students = list(CustomUser.objects.filter(role='STUDENT'))
                 except Exception as seed_err:
                     print(f"[AI] Auto-seeding on process_photos: {seed_err}")
 
-            # 5. Ensure EVERY student has their 128-D face embedding populated
-            for s in class_students:
+            # 2. Ensure EVERY enrolled student has their 128-D face embedding populated
+            for s in all_students:
                 if not s.face_embedding and s.profile_picture:
                     try:
                         from .attendance_seeder import extract_face_embedding_from_file
@@ -419,6 +383,23 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
                             print(f"[AI] Successfully generated embedding on the fly for {s.username}")
                     except Exception as e:
                         print(f"[AI] Embedding calculation error for {s.username}: {e}")
+
+            # 3. Determine cohort and matching candidates
+            class_students = []
+            if clean_class_id:
+                class_students = [s for s in all_students if s.student_class_id == clean_class_id]
+
+            if not class_students:
+                target_class = StudentClass.objects.filter(name__icontains='B.Tech IT').first()
+                if target_class:
+                    class_students = [s for s in all_students if s.student_class_id == target_class.id]
+                    if not clean_class_id:
+                        clean_class_id = target_class.id
+
+            # Fallback to all_students so no student is ever excluded from face recognition
+            if not class_students:
+                class_students = all_students
+            match_candidates = all_students if len(all_students) >= len(class_students) else class_students
 
             total_photos = len(photos)
 
@@ -447,7 +428,7 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
             photo_bytes_list = [p.read() for p in photos]
             draft_result = process_classroom_photos(
                 photo_bytes_list,
-                class_students,
+                match_candidates,
                 progress_callback=ws_progress_callback
             )
 

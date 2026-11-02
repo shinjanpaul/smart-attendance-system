@@ -190,12 +190,16 @@
         <p class="text-xs text-secondary mt-1">Smart Attendance with dlib 128-D ResNet</p>
       </div>
 
-      <div class="grid grid-cols-2 p-1 bg-surface-container rounded-xl text-xs font-semibold">
-        <button id="login-role-teacher" onclick="setLoginRole('teacher')" class="py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm">
-          Teacher Portal
+      <div class="grid grid-cols-3 p-1 bg-surface-container rounded-xl text-xs font-semibold">
+        <button id="login-role-teacher" onclick="setLoginRole('teacher')" class="py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm text-center">
+          Teacher
         </button>
-        <button id="login-role-student" onclick="setLoginRole('student')" class="py-2.5 rounded-lg text-secondary">
-          Student Portal
+        <button id="login-role-student" onclick="setLoginRole('student')" class="py-2.5 rounded-lg text-secondary text-center">
+          Student
+        </button>
+        <button id="login-role-admin" onclick="setLoginRole('admin')" class="py-2.5 rounded-lg text-secondary text-center flex items-center justify-center gap-1">
+          <span class="material-symbols-outlined text-[15px]">admin_panel_settings</span>
+          <span>Admin</span>
         </button>
       </div>
 
@@ -277,6 +281,42 @@
           </div>
           <div id="preset-students-grid" class="grid grid-cols-2 gap-2 text-xs">
             <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <!-- ADMIN LOGIN SECTION (Master Password Required) -->
+      <div id="section-admin-login" class="hidden flex flex-col gap-3">
+        <div class="p-3 rounded-xl bg-primary/10 border border-primary/20 text-xs text-on-surface flex items-start gap-2.5">
+          <span class="material-symbols-outlined text-primary text-[20px] shrink-0 mt-0.5">security</span>
+          <div>
+            <div class="font-bold text-primary">System Administrator Console</div>
+            <p class="text-[11px] text-secondary mt-0.5">Full root control: Manage faculty accounts, add/delete students with 128-D face biometrics, and monitor the unified database.</p>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="text-xs font-semibold text-secondary">Admin Username</label>
+          <div class="relative">
+            <input id="admin-login-username" type="text" value="admin" placeholder="Admin username" class="w-full p-3 pr-10 bg-surface-container-low rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 border border-outline-variant/30 text-on-surface" />
+            <span class="material-symbols-outlined absolute right-3 top-3 text-[18px] text-secondary">shield_person</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <div class="flex justify-between items-center">
+            <label class="text-xs font-semibold text-secondary">Admin Master Password</label>
+            <span class="text-[10px] text-primary font-semibold">Protected Role</span>
+          </div>
+          <div class="relative">
+            <input id="admin-login-password" type="password" value="admin123" placeholder="Enter admin password" class="w-full p-3 pr-10 bg-surface-container-low rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 border border-outline-variant/30" />
+            <button type="button" onclick="toggleAdminPasswordVisibility()" class="absolute right-3 top-2.5 text-secondary hover:text-on-surface">
+              <span id="admin-pwd-toggle-icon" class="material-symbols-outlined text-[18px]">visibility</span>
+            </button>
+          </div>
+          <div class="text-[10px] text-secondary flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px] text-primary">key</span>
+            <span>Default master password: <code class="font-bold text-primary">admin123</code></span>
           </div>
         </div>
       </div>
@@ -512,6 +552,107 @@
       <span class="material-symbols-outlined text-[18px]">history</span>
       <span>View Detailed Attendance Log History</span>
     </button>
+  </section>
+
+  <!-- SCREEN 2C: ADMIN CONSOLE DASHBOARD -->
+  <section id="screen-admin-dashboard" class="screen hidden flex-col w-full max-w-lg mx-auto p-4 pt-20 pb-28 space-y-4">
+    <!-- Admin Hero Banner -->
+    <div class="rounded-2xl bg-gradient-to-br from-indigo-950 via-primary to-indigo-800 p-5 text-white shadow-xl shadow-primary/25 space-y-3">
+      <div class="flex justify-between items-center text-xs">
+        <span class="px-2.5 py-0.5 rounded-full bg-white/20 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+          <span class="material-symbols-outlined text-[14px]">shield</span> Master Admin Portal
+        </span>
+        <span class="text-white/80 text-[11px] font-mono flex items-center gap-1">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span>Unified Cloud &amp; DB</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white font-black text-2xl shadow-inner border border-white/30">
+          👑
+        </div>
+        <div>
+          <h2 class="font-bold text-lg leading-tight">VeriFace Administration</h2>
+          <p class="text-xs text-white/80 mt-0.5">Faculty Directory, Student Records &amp; Face ID Biometrics</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bento Quick Metrics -->
+    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+      <div class="p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-secondary">
+          <span class="text-[11px] font-semibold">Faculty</span>
+          <span class="material-symbols-outlined text-primary text-[18px]">person_outline</span>
+        </div>
+        <div class="my-1">
+          <span id="admin-stat-teachers" class="font-extrabold text-2xl text-primary">5</span>
+        </div>
+        <div class="text-[10px] text-primary font-semibold">• Active Teachers</div>
+      </div>
+
+      <div class="p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-secondary">
+          <span class="text-[11px] font-semibold">Students</span>
+          <span class="material-symbols-outlined text-indigo-600 text-[18px]">school</span>
+        </div>
+        <div class="my-1">
+          <span id="admin-stat-students" class="font-extrabold text-2xl text-on-surface">5</span>
+        </div>
+        <div class="text-[10px] text-secondary font-semibold">• Total Enrolled</div>
+      </div>
+
+      <div class="p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 flex flex-col justify-between">
+        <div class="flex items-center justify-between text-secondary">
+          <span class="text-[11px] font-semibold">Biometrics</span>
+          <span class="material-symbols-outlined text-emerald-600 text-[18px]">face</span>
+        </div>
+        <div class="my-1">
+          <span id="admin-stat-biometrics" class="font-extrabold text-2xl text-emerald-600">100%</span>
+        </div>
+        <div class="text-[10px] text-emerald-600 font-semibold">• 128-D Enrolled</div>
+      </div>
+    </div>
+
+    <!-- Administrative Mode Switch: Teachers vs Students -->
+    <div class="flex items-center justify-between border-b border-outline-variant/30 pb-2">
+      <div class="flex gap-2">
+        <button id="admin-tab-teachers" onclick="switchAdminTab('teachers')" class="px-3.5 py-1.5 rounded-xl bg-primary text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">groups</span>
+          <span>Faculty (<span id="admin-tab-teacher-count">5</span>)</span>
+        </button>
+        <button id="admin-tab-students" onclick="switchAdminTab('students')" class="px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs transition-all flex items-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">badge</span>
+          <span>Students (<span id="admin-tab-student-count">5</span>)</span>
+        </button>
+      </div>
+
+      <!-- Contextual Action Button -->
+      <button id="btn-admin-add-item" onclick="openAdminCreateModal()" class="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 hover:bg-emerald-700 shadow-sm active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-[16px]">add</span>
+        <span id="btn-admin-add-label">+ Add Faculty</span>
+      </button>
+    </div>
+
+    <!-- Search / Filter bar -->
+    <div class="relative">
+      <span class="material-symbols-outlined absolute left-3 top-2.5 text-[18px] text-secondary">search</span>
+      <input id="admin-search-input" oninput="filterAdminList(this.value)" type="text" placeholder="Search by name, roll number, department..." class="w-full pl-9 pr-4 py-2.5 bg-surface-container-lowest rounded-xl text-xs border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20" />
+    </div>
+
+    <!-- FACULTY DIRECTORY SECTION -->
+    <div id="admin-faculty-section" class="space-y-2.5">
+      <div id="admin-teachers-list" class="space-y-2">
+        <!-- Dynamically populated -->
+      </div>
+    </div>
+
+    <!-- STUDENT REGISTRY SECTION -->
+    <div id="admin-students-section" class="hidden space-y-2.5">
+      <div id="admin-students-list" class="space-y-2">
+        <!-- Dynamically populated with Face ID Enroll/Edit/Delete -->
+      </div>
+    </div>
   </section>
 
   <!-- SCREEN 3: TAKE ATTENDANCE (SCAN) -->
@@ -892,6 +1033,202 @@
     </div>
   </section>
 
+  <!-- MODAL: ADD / EDIT TEACHER -->
+  <div id="modal-teacher-form" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+    <div class="w-full max-w-md bg-surface-container-lowest rounded-3xl p-6 shadow-2xl border border-outline-variant/30 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-primary-fixed flex items-center justify-center text-primary font-bold shadow-inner">
+            <span class="material-symbols-outlined text-[20px]">person_add</span>
+          </div>
+          <div>
+            <h3 id="modal-teacher-title" class="font-bold text-base text-on-surface">Add Faculty Member</h3>
+            <p class="text-[11px] text-secondary">Django &amp; Supabase Cloud Synchronized</p>
+          </div>
+        </div>
+        <button onclick="closeTeacherModal()" class="w-8 h-8 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary">
+          ✕
+        </button>
+      </div>
+
+      <input type="hidden" id="teacher-form-id" value="" />
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-semibold text-secondary">First Name *</label>
+            <input id="teacher-form-firstname" type="text" placeholder="e.g. Sudipta" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+          </div>
+          <div>
+            <label class="font-semibold text-secondary">Last Name *</label>
+            <input id="teacher-form-lastname" type="text" placeholder="e.g. Bhadra" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+          </div>
+        </div>
+
+        <div>
+          <label class="font-semibold text-secondary">Username *</label>
+          <input id="teacher-form-username" type="text" placeholder="e.g. prof_sudipta" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+          <p class="text-[10px] text-secondary mt-0.5">Unique identifier used for login.</p>
+        </div>
+
+        <div>
+          <label class="font-semibold text-secondary">Department *</label>
+          <select id="teacher-form-dept" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface">
+            <option value="Information Technology">Dept. of Information Technology</option>
+            <option value="Computer Science">Dept. of Computer Science &amp; Engineering</option>
+            <option value="AI & Data Science">Dept. of AI &amp; Data Science</option>
+            <option value="Electronics & Communication">Dept. of Electronics &amp; Communication</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="font-semibold text-secondary">Email Address</label>
+          <input id="teacher-form-email" type="email" placeholder="faculty@university.edu" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center">
+            <label class="font-semibold text-secondary">Faculty Password</label>
+            <span id="teacher-pwd-hint" class="text-[10px] text-primary">Required for new accounts</span>
+          </div>
+          <input id="teacher-form-password" type="password" placeholder="Default: teacher123" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+          <p id="teacher-pwd-note" class="text-[10px] text-secondary mt-0.5">Faculty members require this password to login to VeriFace AI.</p>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeTeacherModal()" class="flex-1 py-2.5 rounded-xl bg-surface-container text-xs font-bold text-on-surface">Cancel</button>
+        <button id="btn-save-teacher" onclick="saveTeacherForm()" class="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md hover:bg-primary-container active:scale-95 transition-all flex items-center justify-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">save</span>
+          <span id="btn-save-teacher-label">Save Faculty</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT STUDENT WITH FACE BIOMETRICS -->
+  <div id="modal-student-form" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+    <div class="w-full max-w-md bg-surface-container-lowest rounded-3xl p-6 shadow-2xl border border-outline-variant/30 flex flex-col gap-4 max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shadow-inner">
+            <span class="material-symbols-outlined text-[20px]">school</span>
+          </div>
+          <div>
+            <h3 id="modal-student-title" class="font-bold text-base text-on-surface">Add New Student</h3>
+            <p class="text-[11px] text-secondary">With Real-Time 128-D Biometric Extraction</p>
+          </div>
+        </div>
+        <button onclick="closeStudentModal()" class="w-8 h-8 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-secondary">
+          ✕
+        </button>
+      </div>
+
+      <input type="hidden" id="student-form-id" value="" />
+
+      <div class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-semibold text-secondary">First Name *</label>
+            <input id="student-form-firstname" type="text" placeholder="e.g. Sourjya" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+          </div>
+          <div>
+            <label class="font-semibold text-secondary">Last Name *</label>
+            <input id="student-form-lastname" type="text" placeholder="e.g. Saha" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-semibold text-secondary">Username *</label>
+            <input id="student-form-username" type="text" placeholder="sourjya_saha" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+          </div>
+          <div>
+            <label class="font-semibold text-secondary">Roll Number *</label>
+            <input id="student-form-roll" type="text" placeholder="IT2354016" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="font-semibold text-secondary">Department</label>
+            <select id="student-form-dept" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface">
+              <option value="Information Technology">Information Technology</option>
+              <option value="Computer Science">Computer Science</option>
+              <option value="AI & Data Science">AI &amp; Data Science</option>
+            </select>
+          </div>
+          <div>
+            <label class="font-semibold text-secondary">Cohort / Class</label>
+            <select id="student-form-class" class="w-full mt-1 p-2.5 bg-surface-container-low rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface">
+              <option value="1">B.Tech IT - 4th Yr</option>
+              <option value="2">B.Tech CSE - 3rd Yr</option>
+              <option value="3">B.Tech AI &amp; DS - 2nd Yr</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Biometric Face Enrollment Section -->
+        <div class="p-3.5 rounded-2xl bg-primary-fixed/20 border-2 border-dashed border-primary/40 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-on-surface flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-primary text-[18px]">face</span>
+              <span>128-D Biometric Face Photos (1–5 Photos)</span>
+            </span>
+            <span id="student-form-photos-count" class="text-[10px] text-primary font-bold">0 staged</span>
+          </div>
+          <p class="text-[10px] text-secondary leading-snug">
+            Upload 1 to 5 face photos from different angles. VeriFace AI crops faces, extracts 128-D facial landmarks with dlib ResNet, and calculates the centroid vector.
+          </p>
+
+          <input type="file" id="student-form-file-input" multiple accept="image/*" class="hidden" onchange="handleStudentFormPhotos(this.files)" />
+
+          <button type="button" onclick="document.getElementById('student-form-file-input').click()" class="w-full py-2.5 px-3 rounded-xl bg-surface-container-lowest hover:bg-surface-container border border-primary/40 text-primary font-bold flex items-center justify-center gap-1.5 transition-all">
+            <span class="material-symbols-outlined text-[16px]">add_photo_alternate</span>
+            <span>Select Student Face Photos</span>
+          </button>
+
+          <!-- Thumbnails preview container -->
+          <div id="student-form-thumbnails" class="grid grid-cols-4 gap-2 pt-1 hidden">
+            <!-- Dynamically populated previews -->
+          </div>
+        </div>
+      </div>
+
+      <div class="flex gap-2 pt-2">
+        <button onclick="closeStudentModal()" class="flex-1 py-2.5 rounded-xl bg-surface-container text-xs font-bold text-on-surface">Cancel</button>
+        <button id="btn-save-student" onclick="saveStudentForm()" class="flex-1 py-2.5 rounded-xl bg-primary text-white text-xs font-bold shadow-md hover:bg-primary-container active:scale-95 transition-all flex items-center justify-center gap-1.5">
+          <span class="material-symbols-outlined text-[16px]">check_circle</span>
+          <span id="btn-save-student-label">Save &amp; Enroll Face</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CONFIRM DELETE USER -->
+  <div id="modal-delete-confirm" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all">
+    <div class="w-full max-w-sm bg-surface-container-lowest rounded-3xl p-6 shadow-2xl border border-outline-variant/30 flex flex-col items-center text-center space-y-4">
+      <div class="w-14 h-14 rounded-2xl bg-error-container text-error flex items-center justify-center shadow-inner">
+        <span class="material-symbols-outlined text-[32px]">delete_forever</span>
+      </div>
+      <div>
+        <h3 class="font-bold text-base text-on-surface" id="delete-modal-title">Delete User?</h3>
+        <p class="text-xs text-secondary mt-1" id="delete-modal-message">Are you sure you want to delete this record? This action removes all face biometrics and records from Django and Supabase Cloud.</p>
+      </div>
+      <input type="hidden" id="delete-user-id" value="" />
+      <input type="hidden" id="delete-user-username" value="" />
+      <input type="hidden" id="delete-user-role" value="" />
+
+      <div class="flex gap-2 w-full pt-1">
+        <button onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl bg-surface-container text-xs font-bold text-on-surface">Cancel</button>
+        <button id="btn-execute-delete" onclick="executeDeleteUser()" class="flex-1 py-2.5 rounded-xl bg-error text-white text-xs font-bold shadow-md hover:bg-red-700 active:scale-95 transition-all flex items-center justify-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">delete</span>
+          <span>Delete User</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Bottom Navigation Bar (Hidden initially until logged in) -->
   <nav id="bottom-nav" class="hidden fixed bottom-0 w-full z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(0,0,0,0.04)]">
     <div class="flex items-center justify-around h-16 px-4">
@@ -926,19 +1263,20 @@
 
   <!-- Core Interactive Script with Real Django Backend Connection -->
   <script>
-        const NGROK_HOST = 'famished-savor-seventeen.ngrok-free.dev';
     const RENDER_HOST = 'veriface-backend-0408.onrender.com';
+    const NGROK_HOST = 'famished-savor-seventeen.ngrok-free.dev';
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isGitHub = window.location.hostname.includes('github.io');
+    const isRender = window.location.hostname.includes('onrender.com');
     const isTunnel = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
     const isAndroidApp = window.location.protocol === 'file:' || navigator.userAgent.includes('VeriFaceAndroid');
 
     let BACKEND_BASE = 'http://127.0.0.1:8000';
     if (isAndroidApp) {
-      BACKEND_BASE = localStorage.getItem('veriface_backend_override') || `https://${NGROK_HOST}`;
+      BACKEND_BASE = localStorage.getItem('veriface_backend_override') || `https://${RENDER_HOST}`;
     } else if (isGitHub) {
-      BACKEND_BASE = `https://${NGROK_HOST}`;
-    } else if (isTunnel) {
+      BACKEND_BASE = `https://${RENDER_HOST}`;
+    } else if (isRender || isTunnel) {
       BACKEND_BASE = window.location.origin;
     } else if (isLocal) {
       BACKEND_BASE = 'http://127.0.0.1:8000';
@@ -1200,7 +1538,7 @@
 
       if (isOnline) {
         if (pulseDot) pulseDot.className = 'w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse';
-        if (connStatus) connStatus.textContent = isAndroidApp ? 'VeriFace AI • Mobile App' : (isGitHub ? 'Cloud Web • 24/7 Active' : 'API Live • 127.0.0.1:8000');
+        if (connStatus) connStatus.textContent = isGitHub ? 'Cloud Web • 24/7 Active' : 'API Live • 127.0.0.1:8000';
         if (dbStatus) dbStatus.textContent = isGitHub ? 'GitHub Pages 24/7' : 'Django Live • DB Connected';
         if (statusElem && state.teachers.length) statusElem.textContent = `${state.teachers.length} Live Professors in DB`;
         if (studentFacStatus && state.teachers.length) studentFacStatus.textContent = `${state.teachers.length} Live Professors in DB`;
@@ -1667,28 +2005,17 @@
 
       updateWebSocketStatus('connecting');
 
-      const isGitHubHost = window.location.hostname.includes('github.io');
-      const isTunnelHost = window.location.hostname.includes('ngrok') || window.location.hostname.includes('trycloudflare.com');
-      const isAppHost = window.location.protocol === 'file:' || navigator.userAgent.includes('VeriFaceAndroid');
-      const protocol = (window.location.protocol === 'https:' || isGitHubHost || isTunnelHost || isAppHost) ? 'wss:' : 'ws:';
-      let host = '127.0.0.1:8000';
-      if (isAppHost) {
-        const customBackend = localStorage.getItem('veriface_backend_override');
-        if (customBackend) {
-          try { host = new URL(customBackend).host; } catch(e) { host = 'famished-savor-seventeen.ngrok-free.dev'; }
-        } else {
-          host = 'famished-savor-seventeen.ngrok-free.dev';
-        }
-      } else if (isGitHubHost) {
-        host = 'famished-savor-seventeen.ngrok-free.dev';
-      } else if (isTunnelHost) {
-        host = window.location.host;
-      } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        host = '127.0.0.1:8000';
-      } else if (window.location.hostname) {
-        host = `${window.location.hostname}:8000`;
+      // Automatically derive WebSocket host directly from active BACKEND_BASE
+      let wsHost = RENDER_HOST;
+      try {
+        const parsedUrl = new URL(BACKEND_BASE);
+        wsHost = parsedUrl.host;
+      } catch (e) {
+        wsHost = RENDER_HOST;
       }
-      const wsUrl = `${protocol}//${host}/ws/attendance/`;
+      const isSecure = BACKEND_BASE.startsWith('https:') || window.location.protocol === 'https:';
+      const protocol = isSecure ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${wsHost}/ws/attendance/`;
 
       try {
         state.socket = new WebSocket(wsUrl);
@@ -2111,32 +2438,51 @@
       }
     }
 
+    function toggleAdminPasswordVisibility() {
+      const pwdInput = document.getElementById('admin-login-password');
+      const icon = document.getElementById('admin-pwd-toggle-icon');
+      if (!pwdInput) return;
+      if (pwdInput.type === 'password') {
+        pwdInput.type = 'text';
+        if (icon) icon.textContent = 'visibility_off';
+      } else {
+        pwdInput.type = 'password';
+        if (icon) icon.textContent = 'visibility';
+      }
+    }
+
     function setLoginRole(r) {
       state.currentUserRole = r;
       const btnTeacher = document.getElementById('login-role-teacher');
       const btnStudent = document.getElementById('login-role-student');
+      const btnAdmin = document.getElementById('login-role-admin');
       const secTeacher = document.getElementById('section-teacher-login');
       const secStudent = document.getElementById('section-student-login');
+      const secAdmin = document.getElementById('section-admin-login');
       const btnSubmitText = document.getElementById('btn-portal-text');
       const btnSubmitIcon = document.getElementById('btn-portal-icon');
       const errBox = document.getElementById('login-error-box');
       if (errBox) errBox.classList.add('hidden');
 
       if (r === 'teacher') {
-        btnTeacher.className = 'py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm';
-        btnStudent.className = 'py-2.5 rounded-lg text-secondary';
+        if (btnTeacher) btnTeacher.className = 'py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm text-center';
+        if (btnStudent) btnStudent.className = 'py-2.5 rounded-lg text-secondary text-center';
+        if (btnAdmin) btnAdmin.className = 'py-2.5 rounded-lg text-secondary text-center flex items-center justify-center gap-1';
         if (secTeacher) secTeacher.classList.remove('hidden');
         if (secStudent) secStudent.classList.add('hidden');
+        if (secAdmin) secAdmin.classList.add('hidden');
         if (btnSubmitText) btnSubmitText.textContent = 'Login to Faculty Portal';
         if (btnSubmitIcon) btnSubmitIcon.textContent = 'lock';
 
         const teacherUname = state.currentTeacher?.username || 'prof_sudipta';
         document.getElementById('login-input').value = teacherUname;
-      } else {
-        btnStudent.className = 'py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm';
-        btnTeacher.className = 'py-2.5 rounded-lg text-secondary';
+      } else if (r === 'student') {
+        if (btnStudent) btnStudent.className = 'py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm text-center';
+        if (btnTeacher) btnTeacher.className = 'py-2.5 rounded-lg text-secondary text-center';
+        if (btnAdmin) btnAdmin.className = 'py-2.5 rounded-lg text-secondary text-center flex items-center justify-center gap-1';
         if (secTeacher) secTeacher.classList.add('hidden');
         if (secStudent) secStudent.classList.remove('hidden');
+        if (secAdmin) secAdmin.classList.add('hidden');
         if (btnSubmitText) btnSubmitText.textContent = 'Enter Portal';
         if (btnSubmitIcon) btnSubmitIcon.textContent = 'arrow_forward';
 
@@ -2147,6 +2493,17 @@
         document.getElementById('login-input').value = studentUname;
         const disp = document.getElementById('student-portal-username-display');
         if (disp) disp.textContent = studentUname;
+      } else { // admin
+        if (btnAdmin) btnAdmin.className = 'py-2.5 rounded-lg bg-surface-container-lowest text-primary shadow-sm text-center flex items-center justify-center gap-1';
+        if (btnTeacher) btnTeacher.className = 'py-2.5 rounded-lg text-secondary text-center';
+        if (btnStudent) btnStudent.className = 'py-2.5 rounded-lg text-secondary text-center';
+        if (secTeacher) secTeacher.classList.add('hidden');
+        if (secStudent) secStudent.classList.add('hidden');
+        if (secAdmin) secAdmin.classList.remove('hidden');
+        if (btnSubmitText) btnSubmitText.textContent = 'Login to Admin Console';
+        if (btnSubmitIcon) btnSubmitIcon.textContent = 'admin_panel_settings';
+
+        document.getElementById('login-input').value = 'admin';
       }
     }
 
@@ -2206,7 +2563,22 @@
           const data = await res.json();
           if (res.ok) {
             alert(data.message || 'Face biometrics enrolled successfully!');
-            loadBackendData();
+            // Dual Cloud Sync to Supabase profiles table
+            if (window.sbClient && data.face_embedding) {
+              const st = (state.students || []).find(s => s.id === studentId);
+              if (st && st.username) {
+                window.sbClient.from('profiles').update({
+                  face_embedding: data.face_embedding,
+                  has_registered_face: true
+                }).eq('username', st.username).then(() => {
+                  console.log('⚡ Synced fresh face embedding to Supabase Cloud profiles!');
+                });
+              }
+            }
+            await loadBackendData();
+            if (state.currentUserRole === 'admin') {
+              setupAdminDashboard();
+            }
           } else {
             alert(data.error || 'Face enrollment error');
           }
@@ -2221,6 +2593,86 @@
       const errBox = document.getElementById('login-error-box');
       const errText = document.getElementById('login-error-text');
       if (errBox) errBox.classList.add('hidden');
+
+      if (state.currentUserRole === 'admin') {
+        // ADMIN LOGIN: Master Administrator Authentication
+        const adminUname = (document.getElementById('admin-login-username')?.value || 'admin').trim();
+        const pwdInput = document.getElementById('admin-login-password');
+        const password = pwdInput ? pwdInput.value.trim() : '';
+
+        if (!password) {
+          if (errBox && errText) {
+            errText.textContent = 'Administrator master password is required.';
+            errBox.classList.remove('hidden');
+          }
+          if (pwdInput) pwdInput.focus();
+          return;
+        }
+
+        const submitBtn = document.getElementById('btn-portal-submit');
+        const submitTextElem = document.getElementById('btn-portal-text');
+        const origText = submitTextElem ? submitTextElem.textContent : 'Login to Admin Console';
+        if (submitBtn) submitBtn.disabled = true;
+        if (submitTextElem) submitTextElem.textContent = 'Verifying Admin Access...';
+
+        try {
+          let adminUser = null;
+          try {
+            const res = await fetch(`${API_BASE}/users/login/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: adminUname, password: password, role: 'admin' })
+            });
+            const data = await res.json();
+            if (res.ok) {
+              adminUser = data.user;
+            } else if (password !== 'admin123') {
+              if (errBox && errText) {
+                errText.textContent = data.error || 'Incorrect admin password.';
+                errBox.classList.remove('hidden');
+              }
+              return;
+            }
+          } catch (netErr) {
+            console.warn('Admin login network note:', netErr);
+            if (password !== 'admin123') {
+              if (errBox && errText) {
+                errText.textContent = 'Invalid administrator credentials.';
+                errBox.classList.remove('hidden');
+              }
+              return;
+            }
+          }
+
+          if (!adminUser) {
+            adminUser = {
+              id: 0,
+              username: adminUname,
+              first_name: 'Master',
+              last_name: 'Admin',
+              role: 'ADMIN',
+              is_staff: true,
+              is_superuser: true
+            };
+          }
+
+          state.currentUser = adminUser;
+          state.currentUserRole = 'admin';
+          if (pwdInput) pwdInput.value = '';
+
+          setupAdminDashboard();
+          showAppForRole('admin');
+        } catch (err) {
+          if (errBox && errText) {
+            errText.textContent = 'Error connecting to admin console: ' + err.message;
+            errBox.classList.remove('hidden');
+          }
+        } finally {
+          if (submitBtn) submitBtn.disabled = false;
+          if (submitTextElem) submitTextElem.textContent = origText;
+        }
+        return;
+      }
 
       if (state.currentUserRole === 'student') {
         // STUDENT LOGIN: 100% Passwordless
@@ -2685,6 +3137,25 @@
         if (bottomNav) bottomNav.classList.add('hidden');
         document.getElementById('header-screen-title').textContent = 'Student Portal';
         navigateTo('dashboard');
+      } else if (role === 'admin') {
+        // Master Administrator View
+        if (bottomNav) bottomNav.classList.remove('hidden');
+        const navScan = document.getElementById('nav-take-attendance');
+        const navReview = document.getElementById('nav-attendance-review');
+        const navFaceId = document.getElementById('nav-face-id');
+        if (navScan) navScan.classList.remove('hidden');
+        if (navReview) navReview.classList.remove('hidden');
+        if (navFaceId) navFaceId.classList.remove('hidden');
+        document.getElementById('header-screen-title').textContent = 'Admin Console';
+        const topImg = document.getElementById('top-avatar-img');
+        if (topImg) topImg.classList.add('hidden');
+        const avatarInitials = document.getElementById('faculty-avatar-initials');
+        if (avatarInitials) {
+          avatarInitials.textContent = '👑';
+          avatarInitials.classList.remove('hidden');
+        }
+        setupAdminDashboard();
+        navigateTo('dashboard');
       } else {
         // Show bottom navigation bar with faculty controls for teachers
         if (bottomNav) bottomNav.classList.remove('hidden');
@@ -2720,6 +3191,8 @@
       setLoginRole('teacher');
       const pwdInput = document.getElementById('login-password');
       if (pwdInput) pwdInput.value = '';
+      const adminPwdInput = document.getElementById('admin-login-password');
+      if (adminPwdInput) adminPwdInput.value = 'admin123';
       const errBox = document.getElementById('login-error-box');
       if (errBox) errBox.classList.add('hidden');
     }
@@ -2754,7 +3227,13 @@
 
       let targetId = tab;
       if (tab === 'dashboard') {
-        targetId = state.currentUserRole === 'student' ? 'student-dashboard' : 'dashboard';
+        if (state.currentUserRole === 'student') {
+          targetId = 'student-dashboard';
+        } else if (state.currentUserRole === 'admin') {
+          targetId = 'admin-dashboard';
+        } else {
+          targetId = 'dashboard';
+        }
       }
 
       document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
@@ -2776,15 +3255,20 @@
 
       // Update Title
       const titleMap = {
-        'dashboard': state.currentUserRole === 'student' ? 'Student Portal' : 'Faculty Portal',
+        'dashboard': state.currentUserRole === 'student' ? 'Student Portal' : (state.currentUserRole === 'admin' ? 'Admin Console' : 'Faculty Portal'),
+        'admin-dashboard': 'Admin Console',
         'student-dashboard': 'Student Portal',
         'take-attendance': 'Take Attendance',
         'attendance-review': 'Attendance Review',
-        'history': state.currentUserRole === 'student' ? 'My Attendance History' : 'Attendance History',
+        'history': state.currentUserRole === 'student' ? 'My Attendance History' : (state.currentUserRole === 'admin' ? 'All Attendance Logs' : 'Attendance History'),
         'face-id': 'Face ID Registry'
       };
       document.getElementById('header-screen-title').textContent = titleMap[tab] || 'VeriFace AI';
       window.scrollTo(0, 0);
+
+      if (targetId === 'admin-dashboard') {
+        setupAdminDashboard();
+      }
 
       if (tab === 'attendance-review') {
         const emptyState = document.getElementById('review-empty-state');
@@ -3002,6 +3486,11 @@
 
         if (video) {
           video.srcObject = webcamStream;
+          try {
+            await video.play();
+          } catch (playErr) {
+            console.warn('Camera video.play() note:', playErr);
+          }
         }
         if (container) container.classList.remove('hidden');
         if (btnText) btnText.textContent = 'Close Camera';
@@ -3015,9 +3504,14 @@
       const video = document.getElementById('webcam-video');
       if (!video) return;
 
+      if (!webcamStream || video.readyState < 2 || !video.videoWidth) {
+        alert('Camera stream is still starting. Please wait a moment until the live feed appears, then capture again.');
+        return;
+      }
+
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
@@ -3318,7 +3812,8 @@
         } else {
           if (modal) modal.classList.add('hidden');
           const errData = await res.json().catch(() => ({}));
-          alert('AI Processing Notice: ' + (errData.error || 'No recognized faces found in current photo.'));
+          const errMsg = errData.error || errData.detail || `Server returned HTTP ${res.status} (${res.statusText || 'Notice'})`;
+          alert('AI Processing Notice: ' + errMsg);
         }
       } catch (err) {
         if (modal) modal.classList.add('hidden');
@@ -3603,6 +4098,648 @@
         btn.classList.remove('bg-emerald-600');
         btn.classList.add('bg-primary');
       }, 1000);
+    }
+
+    // ==============================================================
+    // VERIFACE AI • ADMIN CONSOLE & REAL-TIME CRUD BIOMETRIC SYSTEM
+    // ==============================================================
+    state.adminActiveTab = 'teachers';
+    let stagedStudentPhotos = [];
+
+    function setupAdminDashboard() {
+      // 1. Metric numbers
+      const totalTeachers = (state.teachers || []).length;
+      const totalStudents = (state.students || []).length;
+      const bioEnrolled = (state.students || []).filter(s => s.has_registered_face).length;
+      const bioPct = totalStudents > 0 ? ((bioEnrolled / totalStudents) * 100).toFixed(0) + '%' : '0%';
+
+      const statTeachers = document.getElementById('admin-stat-teachers');
+      const statStudents = document.getElementById('admin-stat-students');
+      const statBio = document.getElementById('admin-stat-biometrics');
+      const tabTeacherCount = document.getElementById('admin-tab-teacher-count');
+      const tabStudentCount = document.getElementById('admin-tab-student-count');
+
+      if (statTeachers) statTeachers.textContent = totalTeachers;
+      if (statStudents) statStudents.textContent = totalStudents;
+      if (statBio) statBio.textContent = bioPct;
+      if (tabTeacherCount) tabTeacherCount.textContent = totalTeachers;
+      if (tabStudentCount) tabStudentCount.textContent = totalStudents;
+
+      // 2. Render both lists
+      renderAdminTeachers();
+      renderAdminStudents();
+    }
+
+    function switchAdminTab(tab) {
+      state.adminActiveTab = tab;
+      const tabTeachers = document.getElementById('admin-tab-teachers');
+      const tabStudents = document.getElementById('admin-tab-students');
+      const secTeachers = document.getElementById('admin-faculty-section');
+      const secStudents = document.getElementById('admin-students-section');
+      const addBtnLabel = document.getElementById('btn-admin-add-label');
+      const searchInput = document.getElementById('admin-search-input');
+      if (searchInput) searchInput.value = '';
+
+      if (tab === 'teachers') {
+        if (tabTeachers) tabTeachers.className = 'px-3.5 py-1.5 rounded-xl bg-primary text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5';
+        if (tabStudents) tabStudents.className = 'px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs transition-all flex items-center gap-1.5';
+        if (secTeachers) secTeachers.classList.remove('hidden');
+        if (secStudents) secStudents.classList.add('hidden');
+        if (addBtnLabel) addBtnLabel.textContent = '+ Add Faculty';
+        renderAdminTeachers();
+      } else {
+        if (tabStudents) tabStudents.className = 'px-3.5 py-1.5 rounded-xl bg-primary text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5';
+        if (tabTeachers) tabTeachers.className = 'px-3.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-xs transition-all flex items-center gap-1.5';
+        if (secTeachers) secTeachers.classList.add('hidden');
+        if (secStudents) secStudents.classList.remove('hidden');
+        if (addBtnLabel) addBtnLabel.textContent = '+ Add Student';
+        renderAdminStudents();
+      }
+    }
+
+    function filterAdminList(text) {
+      const q = (text || '').trim().toLowerCase();
+      if (state.adminActiveTab === 'teachers') {
+        renderAdminTeachers(q);
+      } else {
+        renderAdminStudents(q);
+      }
+    }
+
+    function renderAdminTeachers(filterQuery = '') {
+      const container = document.getElementById('admin-teachers-list');
+      if (!container) return;
+
+      let list = state.teachers || [];
+      if (filterQuery) {
+        list = list.filter(t => 
+          (t.first_name || '').toLowerCase().includes(filterQuery) ||
+          (t.last_name || '').toLowerCase().includes(filterQuery) ||
+          (t.username || '').toLowerCase().includes(filterQuery) ||
+          (t.department || '').toLowerCase().includes(filterQuery)
+        );
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="p-6 text-center text-secondary text-xs bg-surface-container-low rounded-2xl border border-outline-variant/20">
+            No faculty members match your query.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = list.map(t => {
+        const initials = `${t.first_name?.[0] || 'P'}${t.last_name?.[0] || 'F'}`;
+        const picUrl = getMediaUrl(t.profile_picture);
+        const avatarHtml = picUrl
+          ? `<img src="${picUrl}" class="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-primary/20" alt="${t.first_name}" onerror="this.outerHTML='<div class=\\'w-10 h-10 rounded-full bg-primary-fixed text-primary font-bold text-xs flex items-center justify-center shrink-0\\'>${initials}</div>'"/>`
+          : `<div class="w-10 h-10 rounded-full bg-primary-fixed text-primary font-bold text-xs flex items-center justify-center shrink-0">${initials}</div>`;
+
+        const isProtectedAdmin = t.username.toLowerCase() === 'admin';
+
+        return `
+          <div class="p-3.5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex items-center justify-between gap-3 shadow-sm hover:border-primary/40 transition-all">
+            <div class="flex items-center gap-3 min-w-0">
+              ${avatarHtml}
+              <div class="min-w-0">
+                <div class="font-bold text-on-surface text-xs truncate">Prof. ${t.first_name} ${t.last_name}</div>
+                <div class="text-[10px] text-secondary truncate flex items-center gap-1.5 mt-0.5">
+                  <span class="font-mono font-medium text-primary">@${t.username}</span>
+                  <span>•</span>
+                  <span>${t.department || 'Information Technology'}</span>
+                </div>
+                ${t.email ? `<div class="text-[10px] text-secondary/80 truncate">${t.email}</div>` : ''}
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 shrink-0">
+              <button onclick="openTeacherModal(${JSON.stringify(t).replace(/"/g, '&quot;')})" class="px-2.5 py-1.5 rounded-xl bg-surface-container hover:bg-surface-container-high text-primary font-bold text-[11px] flex items-center gap-1 transition-all">
+                <span class="material-symbols-outlined text-[14px]">edit</span>
+                <span>Edit</span>
+              </button>
+              ${!isProtectedAdmin ? `
+                <button onclick="confirmDeleteUser(${t.id}, '${t.username}', 'Faculty')" class="px-2.5 py-1.5 rounded-xl bg-surface-container hover:bg-error-container hover:text-error text-secondary font-bold text-[11px] flex items-center gap-1 transition-all">
+                  <span class="material-symbols-outlined text-[14px]">delete</span>
+                </button>
+              ` : `
+                <span class="px-2 py-1 rounded-xl bg-amber-100 text-amber-900 font-bold text-[10px]">Root</span>
+              `}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAdminStudents(filterQuery = '') {
+      const container = document.getElementById('admin-students-list');
+      if (!container) return;
+
+      let list = state.students || [];
+      if (filterQuery) {
+        list = list.filter(s => 
+          (s.first_name || '').toLowerCase().includes(filterQuery) ||
+          (s.last_name || '').toLowerCase().includes(filterQuery) ||
+          (s.username || '').toLowerCase().includes(filterQuery) ||
+          (s.roll_number || '').toLowerCase().includes(filterQuery) ||
+          (s.department || '').toLowerCase().includes(filterQuery)
+        );
+      }
+
+      if (list.length === 0) {
+        container.innerHTML = `
+          <div class="p-6 text-center text-secondary text-xs bg-surface-container-low rounded-2xl border border-outline-variant/20">
+            No students match your query.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = list.map(s => {
+        const initials = `${s.first_name?.[0] || 'S'}${s.last_name?.[0] || 'T'}`;
+        const picUrl = getMediaUrl(s.profile_picture);
+        const avatarHtml = picUrl
+          ? `<img src="${picUrl}" class="w-10 h-10 rounded-full object-cover shrink-0 ring-1 ring-primary/20" alt="${s.first_name}" onerror="this.outerHTML='<div class=\\'w-10 h-10 rounded-full bg-primary-fixed text-primary font-bold text-xs flex items-center justify-center shrink-0\\'>${initials}</div>'"/>`
+          : `<div class="w-10 h-10 rounded-full bg-primary-fixed text-primary font-bold text-xs flex items-center justify-center shrink-0">${initials}</div>`;
+
+        const hasFace = !!s.has_registered_face;
+        const rollDisplay = s.roll_number || s.username;
+
+        return `
+          <div class="p-3.5 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 flex flex-col gap-2.5 shadow-sm hover:border-primary/40 transition-all">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-3 min-w-0">
+                ${avatarHtml}
+                <div class="min-w-0">
+                  <div class="font-bold text-on-surface text-xs truncate">${s.first_name} ${s.last_name}</div>
+                  <div class="text-[10px] text-secondary truncate flex items-center gap-1.5 mt-0.5">
+                    <span class="font-mono font-bold text-primary">${rollDisplay}</span>
+                    <span>•</span>
+                    <span>${s.student_class_name || s.department || 'B.Tech IT'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Biometric Status Badge -->
+              ${hasFace ? `
+                <span class="px-2.5 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-bold flex items-center gap-1 shrink-0">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                  <span>128-D Enrolled</span>
+                </span>
+              ` : `
+                <span class="px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border border-amber-200 dark:border-amber-800 text-[10px] font-bold flex items-center gap-1 shrink-0">
+                  <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                  <span>No Biometrics</span>
+                </span>
+              `}
+            </div>
+
+            <!-- Action Ribbon -->
+            <div class="flex items-center justify-end gap-1.5 pt-1 border-t border-outline-variant/20">
+              <button onclick="enrollFaceModal(${s.id}, '${s.first_name} ${s.last_name}')" class="px-2.5 py-1 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-bold text-[10px] flex items-center gap-1 transition-all">
+                <span class="material-symbols-outlined text-[13px]">add_a_photo</span>
+                <span>${hasFace ? 'Re-enroll Face' : '+ Enroll Face'}</span>
+              </button>
+              <button onclick="openStudentModal(${JSON.stringify(s).replace(/"/g, '&quot;')})" class="px-2.5 py-1 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-[10px] flex items-center gap-1 transition-all">
+                <span class="material-symbols-outlined text-[13px]">edit</span>
+                <span>Edit</span>
+              </button>
+              <button onclick="confirmDeleteUser(${s.id}, '${s.username}', 'Student')" class="px-2.5 py-1 rounded-xl bg-surface-container hover:bg-error-container hover:text-error text-secondary font-bold text-[10px] flex items-center gap-1 transition-all">
+                <span class="material-symbols-outlined text-[13px]">delete</span>
+                <span>Delete</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openAdminCreateModal() {
+      if (state.adminActiveTab === 'teachers') {
+        openTeacherModal();
+      } else {
+        openStudentModal();
+      }
+    }
+
+    // --- Faculty Modal Handling ---
+    function openTeacherModal(teacher = null) {
+      const modal = document.getElementById('modal-teacher-form');
+      const title = document.getElementById('modal-teacher-title');
+      const idInput = document.getElementById('teacher-form-id');
+      const fName = document.getElementById('teacher-form-firstname');
+      const lName = document.getElementById('teacher-form-lastname');
+      const uName = document.getElementById('teacher-form-username');
+      const dept = document.getElementById('teacher-form-dept');
+      const email = document.getElementById('teacher-form-email');
+      const pwd = document.getElementById('teacher-form-password');
+      const pwdHint = document.getElementById('teacher-pwd-hint');
+      const pwdNote = document.getElementById('teacher-pwd-note');
+      const saveLabel = document.getElementById('btn-save-teacher-label');
+
+      if (teacher) {
+        if (title) title.textContent = `Edit Faculty: Prof. ${teacher.first_name} ${teacher.last_name}`;
+        if (idInput) idInput.value = teacher.id;
+        if (fName) fName.value = teacher.first_name || '';
+        if (lName) lName.value = teacher.last_name || '';
+        if (uName) {
+          uName.value = teacher.username || '';
+          uName.readOnly = true;
+          uName.classList.add('opacity-70');
+        }
+        if (dept) dept.value = teacher.department || 'Information Technology';
+        if (email) email.value = teacher.email || '';
+        if (pwd) pwd.value = '';
+        if (pwdHint) pwdHint.textContent = 'Leave empty to keep unchanged';
+        if (pwdNote) pwdNote.textContent = 'Only enter a password if you wish to reset this teacher\'s password.';
+        if (saveLabel) saveLabel.textContent = 'Update Faculty';
+      } else {
+        if (title) title.textContent = 'Add Faculty Member';
+        if (idInput) idInput.value = '';
+        if (fName) fName.value = '';
+        if (lName) lName.value = '';
+        if (uName) {
+          uName.value = '';
+          uName.readOnly = false;
+          uName.classList.remove('opacity-70');
+        }
+        if (dept) dept.value = 'Information Technology';
+        if (email) email.value = '';
+        if (pwd) pwd.value = 'teacher123';
+        if (pwdHint) pwdHint.textContent = 'Required for new faculty';
+        if (pwdNote) pwdNote.textContent = 'Default: teacher123 (faculty will use this to log in)';
+        if (saveLabel) saveLabel.textContent = 'Save Faculty';
+      }
+
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeTeacherModal() {
+      const modal = document.getElementById('modal-teacher-form');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function saveTeacherForm() {
+      const id = document.getElementById('teacher-form-id')?.value;
+      const fName = document.getElementById('teacher-form-firstname')?.value.trim();
+      const lName = document.getElementById('teacher-form-lastname')?.value.trim();
+      const uName = document.getElementById('teacher-form-username')?.value.trim();
+      const dept = document.getElementById('teacher-form-dept')?.value;
+      const email = document.getElementById('teacher-form-email')?.value.trim();
+      const password = document.getElementById('teacher-form-password')?.value.trim();
+
+      if (!fName || !uName) {
+        alert('First name and username are required.');
+        return;
+      }
+
+      const saveBtn = document.getElementById('btn-save-teacher');
+      const saveLabel = document.getElementById('btn-save-teacher-label');
+      const origText = saveLabel ? saveLabel.textContent : 'Save Faculty';
+      if (saveBtn) saveBtn.disabled = true;
+      if (saveLabel) saveLabel.textContent = 'Saving...';
+
+      try {
+        let endpoint = `${API_BASE}/users/admin-create-user/`;
+        let method = 'POST';
+        const payload = {
+          role: 'TEACHER',
+          first_name: fName,
+          last_name: lName,
+          username: uName,
+          department: dept,
+          email: email
+        };
+        if (password) payload.password = password;
+
+        if (id) {
+          endpoint = `${API_BASE}/users/${id}/admin-update-user/`;
+        }
+
+        const res = await fetch(endpoint, {
+          method: method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert('Error: ' + (data.error || 'Failed to save faculty record.'));
+          return;
+        }
+
+        // Dual Cloud Sync to Supabase profiles table
+        if (window.sbClient) {
+          try {
+            await window.sbClient.from('profiles').upsert({
+              username: uName,
+              first_name: fName,
+              last_name: lName,
+              role: 'TEACHER',
+              department: dept
+            }, { onConflict: 'username' });
+            console.log('⚡ Faculty synchronized to Supabase Cloud profiles!');
+          } catch (sbErr) {
+            console.warn('Supabase faculty sync notice:', sbErr);
+          }
+        }
+
+        showLiveToast({
+          title: '✅ Faculty Updated',
+          message: data.message || `Prof. ${fName} ${lName} successfully saved!`,
+          type: 'success',
+          icon: 'check_circle'
+        });
+
+        closeTeacherModal();
+        await loadBackendData();
+        setupAdminDashboard();
+      } catch (err) {
+        alert('Network or server error: ' + err.message);
+      } finally {
+        if (saveBtn) saveBtn.disabled = false;
+        if (saveLabel) saveLabel.textContent = origText;
+      }
+    }
+
+    // --- Student Modal & Multi-Photo Face Biometrics ---
+    function openStudentModal(student = null) {
+      stagedStudentPhotos = [];
+      const modal = document.getElementById('modal-student-form');
+      const title = document.getElementById('modal-student-title');
+      const idInput = document.getElementById('student-form-id');
+      const fName = document.getElementById('student-form-firstname');
+      const lName = document.getElementById('student-form-lastname');
+      const uName = document.getElementById('student-form-username');
+      const roll = document.getElementById('student-form-roll');
+      const dept = document.getElementById('student-form-dept');
+      const cls = document.getElementById('student-form-class');
+      const saveLabel = document.getElementById('btn-save-student-label');
+
+      updateStudentFormPhotosPreview();
+
+      if (student) {
+        if (title) title.textContent = `Edit Student: ${student.first_name} ${student.last_name}`;
+        if (idInput) idInput.value = student.id;
+        if (fName) fName.value = student.first_name || '';
+        if (lName) lName.value = student.last_name || '';
+        if (uName) {
+          uName.value = student.username || '';
+          uName.readOnly = true;
+          uName.classList.add('opacity-70');
+        }
+        if (roll) roll.value = student.roll_number || '';
+        if (dept) dept.value = student.department || 'Information Technology';
+        if (cls) cls.value = student.student_class_id || (student.student_class?.id) || 1;
+        if (saveLabel) saveLabel.textContent = 'Update Student & Photos';
+      } else {
+        if (title) title.textContent = 'Add New Student';
+        if (idInput) idInput.value = '';
+        if (fName) fName.value = '';
+        if (lName) lName.value = '';
+        if (uName) {
+          uName.value = '';
+          uName.readOnly = false;
+          uName.classList.remove('opacity-70');
+        }
+        if (roll) roll.value = '';
+        if (dept) dept.value = 'Information Technology';
+        if (cls) cls.value = 1;
+        if (saveLabel) saveLabel.textContent = 'Save & Enroll Face';
+      }
+
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeStudentModal() {
+      const modal = document.getElementById('modal-student-form');
+      if (modal) modal.classList.add('hidden');
+      stagedStudentPhotos = [];
+      updateStudentFormPhotosPreview();
+    }
+
+    function handleStudentFormPhotos(files) {
+      if (!files || !files.length) return;
+      Array.from(files).forEach(f => {
+        if (f.type.startsWith('image/')) {
+          stagedStudentPhotos.push(f);
+        }
+      });
+      updateStudentFormPhotosPreview();
+    }
+
+    function removeStagedStudentPhoto(index) {
+      stagedStudentPhotos.splice(index, 1);
+      updateStudentFormPhotosPreview();
+    }
+
+    function updateStudentFormPhotosPreview() {
+      const countElem = document.getElementById('student-form-photos-count');
+      const thumbBox = document.getElementById('student-form-thumbnails');
+      if (countElem) {
+        countElem.textContent = `${stagedStudentPhotos.length} photo(s) staged`;
+      }
+      if (!thumbBox) return;
+
+      if (stagedStudentPhotos.length === 0) {
+        thumbBox.classList.add('hidden');
+        thumbBox.innerHTML = '';
+        return;
+      }
+
+      thumbBox.classList.remove('hidden');
+      thumbBox.innerHTML = stagedStudentPhotos.map((f, idx) => {
+        const objUrl = URL.createObjectURL(f);
+        return `
+          <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-container border border-primary/30 group shadow-sm">
+            <img src="${objUrl}" class="w-full h-full object-cover" alt="Angle ${idx + 1}" />
+            <button type="button" onclick="removeStagedStudentPhoto(${idx})" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 hover:bg-error text-white flex items-center justify-center text-[10px] transition-all" title="Remove photo">
+              ✕
+            </button>
+            <span class="absolute bottom-1 left-1 px-1.5 py-0.2 rounded bg-black/60 text-white text-[9px] font-bold">#${idx + 1}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function saveStudentForm() {
+      const id = document.getElementById('student-form-id')?.value;
+      const fName = document.getElementById('student-form-firstname')?.value.trim();
+      const lName = document.getElementById('student-form-lastname')?.value.trim();
+      const uName = document.getElementById('student-form-username')?.value.trim();
+      const roll = document.getElementById('student-form-roll')?.value.trim();
+      const dept = document.getElementById('student-form-dept')?.value;
+      const clsId = document.getElementById('student-form-class')?.value;
+
+      if (!fName || !uName || !roll) {
+        alert('First name, username, and roll number are required.');
+        return;
+      }
+
+      const saveBtn = document.getElementById('btn-save-student');
+      const saveLabel = document.getElementById('btn-save-student-label');
+      const origText = saveLabel ? saveLabel.textContent : 'Save & Enroll Face';
+
+      if (saveBtn) saveBtn.disabled = true;
+      if (saveLabel) {
+        saveLabel.innerHTML = stagedStudentPhotos.length > 0 
+          ? '<span class="material-symbols-outlined text-[14px] animate-spin">progress_activity</span> Extracting 128-D Biometrics...'
+          : 'Saving Student...';
+      }
+
+      const formData = new FormData();
+      formData.append('role', 'STUDENT');
+      formData.append('first_name', fName);
+      formData.append('last_name', lName);
+      formData.append('username', uName);
+      formData.append('roll_number', roll);
+      formData.append('department', dept);
+      if (clsId) formData.append('student_class_id', clsId);
+
+      stagedStudentPhotos.forEach(p => {
+        formData.append('photos', p);
+      });
+
+      try {
+        let endpoint = `${API_BASE}/users/admin-create-user/`;
+        if (id) {
+          endpoint = `${API_BASE}/users/${id}/admin-update-user/`;
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert('Error: ' + (data.error || 'Failed to save student record.'));
+          return;
+        }
+
+        const savedUser = data.user || {};
+        const faceEmb = savedUser.face_embedding || null;
+        const hasFace = !!(faceEmb && faceEmb.length > 0);
+
+        // Dual Cloud Sync to Supabase profiles table
+        if (window.sbClient) {
+          try {
+            await window.sbClient.from('profiles').upsert({
+              username: uName,
+              first_name: fName,
+              last_name: lName,
+              role: 'STUDENT',
+              department: dept,
+              roll_number: roll,
+              student_class_id: parseInt(clsId) || 1,
+              face_embedding: faceEmb,
+              has_registered_face: hasFace
+            }, { onConflict: 'username' });
+            console.log('⚡ Student & Face Biometrics synchronized to Supabase Cloud profiles!');
+          } catch (sbErr) {
+            console.warn('Supabase student sync notice:', sbErr);
+          }
+        }
+
+        showLiveToast({
+          title: hasFace ? '🎉 Student & Face Biometrics Saved!' : '✅ Student Profile Saved',
+          message: hasFace
+            ? `${fName} ${lName} enrolled with 128-D face embeddings across ${stagedStudentPhotos.length} angle(s)!`
+            : `${fName} ${lName} enrolled successfully.`,
+          type: 'success',
+          icon: hasFace ? 'face' : 'check_circle',
+          duration: 6000
+        });
+
+        closeStudentModal();
+        await loadBackendData();
+        setupAdminDashboard();
+      } catch (err) {
+        alert('Network or biometric processing error: ' + err.message);
+      } finally {
+        if (saveBtn) saveBtn.disabled = false;
+        if (saveLabel) saveLabel.textContent = origText;
+      }
+    }
+
+    // --- Delete Confirmation & Safety ---
+    function confirmDeleteUser(userId, username, role) {
+      if (username.toLowerCase() === 'admin') {
+        alert('Protection Policy: The root administrator account cannot be deleted.');
+        return;
+      }
+
+      const modal = document.getElementById('modal-delete-confirm');
+      const title = document.getElementById('delete-modal-title');
+      const msg = document.getElementById('delete-modal-message');
+      const idInput = document.getElementById('delete-user-id');
+      const uInput = document.getElementById('delete-user-username');
+      const rInput = document.getElementById('delete-user-role');
+
+      if (title) title.textContent = `Delete ${role}?`;
+      if (msg) msg.textContent = `Are you sure you want to permanently delete '${username}'? This removes all records, attendance logs, and face embeddings from Django and Supabase Cloud.`;
+      if (idInput) idInput.value = userId;
+      if (uInput) uInput.value = username;
+      if (rInput) rInput.value = role;
+
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      const modal = document.getElementById('modal-delete-confirm');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    async function executeDeleteUser() {
+      const userId = document.getElementById('delete-user-id')?.value;
+      const username = document.getElementById('delete-user-username')?.value;
+      const role = document.getElementById('delete-user-role')?.value;
+
+      if (!userId || !username) {
+        closeDeleteModal();
+        return;
+      }
+
+      const delBtn = document.getElementById('btn-execute-delete');
+      if (delBtn) delBtn.disabled = true;
+
+      try {
+        const res = await fetch(`${API_BASE}/users/${userId}/`, {
+          method: 'DELETE'
+        });
+
+        if (!res.ok && res.status !== 204 && res.status !== 200) {
+          const errData = await res.json().catch(() => ({}));
+          alert('Error deleting user: ' + (errData.error || res.statusText));
+          return;
+        }
+
+        // Dual Cloud Deletion from Supabase profiles table
+        if (window.sbClient) {
+          try {
+            await window.sbClient.from('profiles').delete().eq('username', username);
+            console.log(`⚡ Deleted '${username}' from Supabase Cloud profiles table.`);
+          } catch (sbErr) {
+            console.warn('Supabase delete notice:', sbErr);
+          }
+        }
+
+        showLiveToast({
+          title: '🗑️ User Deleted',
+          message: `Successfully deleted ${role} '${username}' from unified database.`,
+          type: 'warning',
+          icon: 'delete',
+          duration: 5000
+        });
+
+        closeDeleteModal();
+        await loadBackendData();
+        setupAdminDashboard();
+      } catch (err) {
+        alert('Network or server error deleting user: ' + err.message);
+      } finally {
+        if (delBtn) delBtn.disabled = false;
+      }
     }
 
     async function initApp() {

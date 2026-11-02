@@ -53,7 +53,7 @@ def extract_face_embedding_from_file(rel_path):
         with open(full_path, 'rb') as f:
             photo_bytes = f.read()
 
-        img = decode_image_with_exif(photo_bytes, max_dim=1000)
+        img = decode_image_with_exif(photo_bytes, max_dim=1600)
         if img is None:
             return None
 

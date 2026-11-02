@@ -10,8 +10,8 @@ import numpy as np
 import face_recognition
 
 # Configurable matching threshold (dlib face_recognition distance threshold)
-# 0.65 is optimal for mobile cameras and multi-angle classroom recognition
-MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.65"))
+# 0.68 is optimal for mobile cameras and multi-angle classroom recognition
+MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.68"))
 
 
 import io
@@ -56,10 +56,10 @@ def ensure_8bit_rgb(img):
     return img
 
 
-def decode_image_with_exif(photo_bytes, max_dim=1200):
+def decode_image_with_exif(photo_bytes, max_dim=1600):
     """
     Decodes image bytes, auto-corrects mobile phone EXIF camera orientation,
-    and downscales if greater than max_dim for fast, low-memory dlib inference.
+    and downscales if greater than max_dim (1600px retains fine classroom face details).
     Returns guaranteed 8-bit RGB C-contiguous numpy array with shape (H, W, 3).
     """
     if not photo_bytes:
@@ -99,72 +99,164 @@ def decode_image_with_exif(photo_bytes, max_dim=1200):
     return None
 
 
-def detect_all_faces(img_rgb):
-    """
-    Detects ALL face bounding boxes in an image using face_recognition (HOG model)
-    with safe single-scale upsampling and OpenCV Haar Cascade fallback.
-    Returns list of (x, y, w, h) tuples.
-    """
-    img_rgb = ensure_8bit_rgb(img_rgb)
-    if img_rgb is None or img_rgb.size == 0 or img_rgb.shape[0] < 20 or img_rgb.shape[1] < 20:
-        return []
-
-    locations = []
-    try:
-        locations = face_recognition.face_locations(img_rgb, number_of_times_to_upsample=1)
-        if len(locations) == 0:
-            locations = face_recognition.face_locations(img_rgb, number_of_times_to_upsample=0)
-    except Exception as e:
-        print(f"[AI] face_locations error: {e}")
-
-    bboxes = []
-    for (top, right, bottom, left) in locations:
-        x = left
-        y = top
-        w = right - left
-        h = bottom - top
-        bboxes.append((int(x), int(y), int(w), int(h)))
-
-    if len(bboxes) == 0:
-        try:
-            gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
-            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-            faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(30, 30))
-            for (x, y, w, h) in faces:
-                bboxes.append((int(x), int(y), int(w), int(h)))
-        except Exception:
-            pass
-
-    return bboxes
-
-
 def generate_image_encodings(img_rgb):
     """
-    Detects faces and extracts 128-D dlib ResNet face encodings directly from full image.
+    Robust Multi-Scale & Orientation-Tolerant Face Detection & 128-D ResNet Extraction:
+    1. Ensures 8-bit C-contiguous RGB layout.
+    2. Runs dlib HOG (upsample=1).
+    3. If 0 faces found, runs dlib HOG (upsample=2) for smaller/farther classroom faces.
+    4. If 0 faces found, runs OpenCV Haar Cascade (frontal default + frontal alt2) directly on full frame with 15% landmark context padding.
+    5. If 0 faces found, tests 90-degree rotations (auto-correcting mobile photos with stripped EXIF orientation).
     Returns list of (bbox_tuple, 128D_list) tuples.
     """
     img_rgb = ensure_8bit_rgb(img_rgb)
     if img_rgb is None or img_rgb.size == 0 or img_rgb.shape[0] < 20 or img_rgb.shape[1] < 20:
         return []
 
-    try:
-        locations = face_recognition.face_locations(img_rgb, number_of_times_to_upsample=1)
+    def _extract_from_frame(frame):
+        fh, fw = frame.shape[:2]
+        locations = []
+        try:
+            locations = face_recognition.face_locations(frame, number_of_times_to_upsample=1)
+            if len(locations) == 0:
+                locations = face_recognition.face_locations(frame, number_of_times_to_upsample=2)
+        except Exception as e:
+            print(f"[AI] face_locations error: {e}")
+
+        # Haar cascade fallback directly on full frame
         if len(locations) == 0:
-            locations = face_recognition.face_locations(img_rgb, number_of_times_to_upsample=0)
+            try:
+                gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+                cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+                faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(25, 25))
+                if len(faces) == 0:
+                    alt2_path = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+                    if os.path.exists(alt2_path):
+                        cascade_alt2 = cv2.CascadeClassifier(alt2_path)
+                        faces = cascade_alt2.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(25, 25))
+
+                for (fx, fy, f_w, f_h) in faces:
+                    pad_w = int(f_w * 0.15)
+                    pad_h = int(f_h * 0.15)
+                    top = max(0, fy - pad_h)
+                    left = max(0, fx - pad_w)
+                    bottom = min(fh, fy + f_h + pad_h)
+                    right = min(fw, fx + f_w + pad_w)
+                    locations.append((top, right, bottom, left))
+            except Exception as e:
+                print(f"[AI] Haar fallback note: {e}")
 
         if len(locations) == 0:
             return []
 
-        encodings = face_recognition.face_encodings(img_rgb, known_face_locations=locations)
+        # Deduplicate overlapping locations
+        cleaned_locations = []
+        for loc in locations:
+            top, right, bottom, left = loc
+            overlap = False
+            for c_top, c_right, c_bottom, c_left in cleaned_locations:
+                dx = min(right, c_right) - max(left, c_left)
+                dy = min(bottom, c_bottom) - max(top, c_top)
+                if dx > 0 and dy > 0:
+                    area_inter = dx * dy
+                    area_a = (right - left) * (bottom - top)
+                    if area_inter / max(1, area_a) > 0.45:
+                        overlap = True
+                        break
+            if not overlap:
+                cleaned_locations.append(loc)
+
+        # Process each detected face location individually to prevent one edge-case box from discarding others
         results = []
-        for loc, enc in zip(locations, encodings):
+        for loc in cleaned_locations:
             top, right, bottom, left = loc
             bbox = (int(left), int(top), int(right - left), int(bottom - top))
-            results.append((bbox, enc.astype(np.float32).tolist()))
+            enc = None
+            try:
+                encs = face_recognition.face_encodings(frame, known_face_locations=[loc])
+                if len(encs) > 0:
+                    enc = encs[0].astype(np.float32).tolist()
+            except Exception as e:
+                pass
+
+            # Fallback to cropped patch embedding with full 68-point dlib context
+            if not enc:
+                try:
+                    crop = crop_and_preprocess_face(frame, bbox)
+                    if crop is not None:
+                        enc = generate_embedding(crop)
+                except Exception:
+                    pass
+
+            if enc and len(enc) == 128:
+                results.append((bbox, enc))
 
         return results
+
+    # 1. Try standard orientation
+    results = _extract_from_frame(img_rgb)
+    if len(results) > 0:
+        return results
+
+    # 2. Try camera rotations (90° CW, 270° CW, 180°) in case EXIF was stripped by mobile browser/app
+    for rot in (cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.ROTATE_180):
+        try:
+            rotated = cv2.rotate(img_rgb, rot)
+            rotated = ensure_8bit_rgb(rotated)
+            rot_results = _extract_from_frame(rotated)
+            if len(rot_results) > 0:
+                print(f"[AI] Successfully detected {len(rot_results)} face(s) after camera rotation correction!")
+                return rot_results
+        except Exception:
+            pass
+
+    return []
+
+
+def detect_all_faces(img_rgb):
+    """
+    Independent Multi-Scale Face Detector using OpenCV Haar Cascades
+    (Frontal Default, Frontal Alt2, and Profile) with CLAHE illumination enhancement.
+    Returns list of (x, y, w, h) bounding box tuples.
+    """
+    img_rgb = ensure_8bit_rgb(img_rgb)
+    if img_rgb is None or img_rgb.size == 0 or img_rgb.shape[0] < 20 or img_rgb.shape[1] < 20:
+        return []
+
+    try:
+        gray = cv2.cvtColor(img_rgb, cv2.COLOR_RGB2GRAY)
+        try:
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            gray = clahe.apply(gray)
+        except Exception:
+            pass
+
+        all_bboxes = []
+        for cascade_name in ('haarcascade_frontalface_default.xml', 'haarcascade_frontalface_alt2.xml', 'haarcascade_profileface.xml'):
+            path = cv2.data.haarcascades + cascade_name
+            if os.path.exists(path):
+                cascade = cv2.CascadeClassifier(path)
+                faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(25, 25))
+                for (x, y, w, h) in faces:
+                    all_bboxes.append((int(x), int(y), int(w), int(h)))
+
+        # Deduplicate overlapping boxes
+        deduped = []
+        for b in all_bboxes:
+            bx, by, bw, bh = b
+            overlap = False
+            for dx, dy, dw, dh in deduped:
+                inter_x = max(0, min(bx + bw, dx + dw) - max(bx, dx))
+                inter_y = max(0, min(by + bh, dy + dh) - max(by, dy))
+                if inter_x * inter_y > 0.40 * (bw * bh):
+                    overlap = True
+                    break
+            if not overlap:
+                deduped.append(b)
+
+        return deduped
     except Exception as e:
-        print(f"[AI] generate_image_encodings error: {e}")
+        print(f"[AI] detect_all_faces error: {e}")
         return []
 
 
@@ -303,8 +395,8 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
             continue
 
         face_data = generate_image_encodings(img)
-        total_faces_detected += len(face_data)
 
+        # Fallback if primary extraction found 0 faces
         if len(face_data) == 0:
             bboxes = detect_all_faces(img)
             for bbox in bboxes:
@@ -313,6 +405,9 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
                     emb = generate_embedding(crop)
                     if emb:
                         face_data.append((bbox, emb))
+
+        # Update total faces detected AFTER all extraction stages
+        total_faces_detected += len(face_data)
 
         if progress_callback:
             try:
