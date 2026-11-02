@@ -289,13 +289,13 @@ def seed_database_complete():
             student.roll_number = s_info['roll']
             student.role = 'STUDENT'
 
-        # Set profile picture and face embedding if available
-        if s_info['picture']:
+        # Set profile picture and face embedding if not already customized
+        if s_info['picture'] and not student.profile_picture:
             student.profile_picture = s_info['picture']
             if not student.face_embedding:
                 emb = extract_face_embedding_from_file(s_info['picture'])
                 if emb:
-                    student.face_embedding = emb
+                    student.face_embedding = [emb]
                     print(f"  [AI] Generated 128-D face embedding for {student.username} from {s_info['picture']}")
 
         student.save()

@@ -297,9 +297,35 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='register-face')
     def register_face(self, request, pk=None):
         student = self.get_object()
+        raw_embedding = request.data.get('embedding')
         photos = request.FILES.getlist('photos') or request.FILES.getlist('photo')
+
+        if raw_embedding:
+            try:
+                if isinstance(raw_embedding, str):
+                    import json
+                    raw_embedding = json.loads(raw_embedding)
+            except Exception:
+                pass
+
+            existing = student.face_embedding or []
+            if isinstance(existing, list) and len(existing) > 0 and isinstance(existing[0], list):
+                existing.append(raw_embedding)
+            elif isinstance(existing, list) and len(existing) == 128:
+                existing = [existing, raw_embedding]
+            else:
+                existing = [raw_embedding]
+
+            student.face_embedding = existing
+            student.save()
+            return Response({
+                'message': f"Successfully linked camera face vector to {student.username}!",
+                'student_id': student.id,
+                'angles_enrolled': len(existing)
+            }, status=status.HTTP_200_OK)
+
         if not photos:
-            return Response({'error': 'No photo uploaded. Please provide photo file(s).'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'No photo uploaded. Please provide photo file(s) or embedding.'}, status=status.HTTP_400_BAD_REQUEST)
 
         valid_embeddings = []
         last_photo_file = photos[-1]

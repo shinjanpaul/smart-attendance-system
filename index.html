@@ -921,6 +921,9 @@
         <button onclick="setFilter('absent')" id="tab-absent" class="py-1.5 rounded-lg text-secondary">Absent (0)</button>
       </div>
 
+      <!-- Live AI Biometric Diagnostics Card -->
+      <div id="review-diagnostics-container" class="hidden space-y-2"></div>
+
       <!-- Student Cards List -->
       <div class="space-y-2.5" id="roster-list">
         <!-- Dynamically rendered by renderReviewScreen() -->
@@ -3888,6 +3891,58 @@
       const sticky = document.getElementById('sticky-summary');
       if (sticky) sticky.textContent = `${totalCount} Records (${draft.present_count} Present, ${draft.absent_count} Absent)`;
 
+      // Render AI Diagnostic Banner if match_details has items
+      const diagContainer = document.getElementById('review-diagnostics-container');
+      if (diagContainer) {
+        if (draft.match_details && draft.match_details.length > 0) {
+          diagContainer.classList.remove('hidden');
+          diagContainer.innerHTML = `
+            <div class="p-3.5 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-primary">biometrics</span>
+                  <span>AI Biometric Match Breakdown</span>
+                </span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">Threshold: 0.75</span>
+              </div>
+              <div class="space-y-2 text-[11px]">
+                ${draft.match_details.map((m, mIdx) => {
+                  const isMatched = !!m.student_id;
+                  const candidate = m.closest_candidate || m.student_name || 'Candidate';
+                  const candId = m.closest_candidate_id || m.student_id;
+                  const distVal = (m.distance != null && m.distance !== 999.0) ? Number(m.distance).toFixed(3) : 'No vector';
+                  const embStr = m.embedding ? JSON.stringify(m.embedding).replace(/"/g, '&quot;') : '';
+
+                  return `
+                    <div class="p-2.5 rounded-xl ${isMatched ? 'bg-emerald-50/80 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200' : 'bg-amber-50/80 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-950 dark:text-amber-200'} flex flex-col gap-1.5">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-1.5 font-bold">
+                          <span class="w-2 h-2 rounded-full ${isMatched ? 'bg-emerald-500' : 'bg-amber-500'}"></span>
+                          <span>Face #${mIdx + 1}: ${isMatched ? `✓ Verified ${m.student_name}` : `Unmatched (Closest: ${candidate})`}</span>
+                        </div>
+                        <span class="font-mono font-bold text-[10px] ${isMatched ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-800 dark:text-amber-300'}">Dist: ${distVal}</span>
+                      </div>
+                      ${!isMatched && candId && embStr ? `
+                        <div class="flex items-center justify-between pt-1 border-t border-amber-200/60 dark:border-amber-800/60">
+                          <span class="text-[10px] text-secondary">Distance ${distVal} is close to ${candidate}.</span>
+                          <button onclick="linkFaceToStudent(${candId}, ${embStr}, '${candidate}')" class="px-2.5 py-1 rounded-lg bg-primary text-white font-bold text-[10px] hover:bg-primary-container active:scale-95 transition-all flex items-center gap-1 shadow-xs">
+                            <span class="material-symbols-outlined text-[12px]">add_task</span>
+                            <span>Link Face &amp; Mark Present</span>
+                          </button>
+                        </div>
+                      ` : ''}
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `;
+        } else {
+          diagContainer.classList.add('hidden');
+          diagContainer.innerHTML = '';
+        }
+      }
+
       // Render student list
       const roster = document.getElementById('roster-list');
       if (!roster) return;
@@ -3900,12 +3955,18 @@
 
       allList.forEach(s => {
         const match = draft.match_details ? draft.match_details.find(m => m.student_id === s.id) : null;
+        let closestUnmatched = null;
+        if (!s.is_present && draft.match_details) {
+          closestUnmatched = draft.match_details.find(m => !m.student_id && (m.closest_candidate_id === s.id || (m.closest_candidate && m.closest_candidate.toLowerCase().includes(s.username.toLowerCase()))));
+        }
+
         const conf = match ? (match.confidence * 100).toFixed(1) + '%' : (s.is_present ? '92.4%' : '—');
-        const dist = match ? match.distance : (s.is_present ? '0.38' : '—');
+        const dist = match ? match.distance : (closestUnmatched ? closestUnmatched.distance : (s.is_present ? '0.38' : '—'));
         const initials = s.name.split(' ').map(n => n[0]).join('') || 'ST';
         const studentObj = state.students.find(st => st.id === s.id || st.username === s.username);
         const pic = s.profile_picture || studentObj?.profile_picture;
         const avatarUrl = getMediaUrl(pic);
+        const embStr = (closestUnmatched && closestUnmatched.embedding) ? JSON.stringify(closestUnmatched.embedding).replace(/"/g, '&quot;') : '';
 
         const card = document.createElement('div');
         card.className = 'student-item p-3 rounded-2xl bg-surface-container-lowest shadow-sm border border-outline-variant/30 space-y-2';
@@ -3928,6 +3989,7 @@
               <div class="min-w-0">
                 <div class="font-bold text-xs truncate">${s.name}</div>
                 <div class="text-[11px] text-secondary truncate">Roll: ${s.roll_number || 'IT2026'} • 128-D Enrolled</div>
+                ${!s.is_present && closestUnmatched ? `<div class="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-semibold mt-0.5">Closest detected face dist: ${Number(closestUnmatched.distance).toFixed(3)} (threshold 0.75)</div>` : ''}
               </div>
             </div>
             <input type="checkbox" ${s.is_present ? 'checked' : ''} onchange="toggleStudentCard(this)" class="w-5 h-5 accent-emerald-600 cursor-pointer shrink-0"/>
@@ -3938,7 +4000,15 @@
             </span>
             ${s.is_present 
               ? `<span class="conf-text font-bold text-secondary">Conf: ${conf} • Dist: ${dist}</span>`
-              : `<button onclick="quickMark(this)" class="px-2 py-0.5 rounded-lg bg-primary text-white text-[10px] font-semibold hover:bg-primary-container">Quick Mark Present</button>`
+              : (closestUnmatched && embStr 
+                  ? `<div class="flex items-center gap-1.5">
+                      <button onclick="linkFaceToStudent(${s.id}, ${embStr}, '${s.name}')" class="px-2 py-0.5 rounded-lg bg-indigo-600 text-white text-[10px] font-semibold hover:bg-indigo-700 shadow-xs flex items-center gap-0.5">
+                        <span class="material-symbols-outlined text-[11px]">link</span> Link Face
+                      </button>
+                      <button onclick="quickMark(this)" class="px-2 py-0.5 rounded-lg bg-primary text-white text-[10px] font-semibold hover:bg-primary-container">Quick Mark</button>
+                    </div>`
+                  : `<button onclick="quickMark(this)" class="px-2 py-0.5 rounded-lg bg-primary text-white text-[10px] font-semibold hover:bg-primary-container">Quick Mark Present</button>`
+                )
             }
           </div>
         `;
@@ -4664,6 +4734,70 @@
       } finally {
         if (saveBtn) saveBtn.disabled = false;
         if (saveLabel) saveLabel.textContent = origText;
+      }
+    }
+
+    function enrollFaceModal(studentId, studentName) {
+      const student = (state.students || []).find(s => s.id === studentId || s.username === studentName);
+      if (student) {
+        openStudentModal(student);
+        setTimeout(() => {
+          const fileInp = document.getElementById('student-form-file-input');
+          if (fileInp) fileInp.click();
+        }, 300);
+      } else {
+        openStudentModal();
+      }
+    }
+
+    async function linkFaceToStudent(studentId, embedding, studentName) {
+      const btn = window.event?.currentTarget;
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-[12px] animate-spin">progress_activity</span> Linking...';
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/users/${studentId}/register-face/`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ embedding: embedding })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showLiveToast({
+            title: '🎉 Biometrics Calibrated!',
+            message: `Successfully linked live camera face to ${studentName}! (${data.angles_enrolled || 1} angle(s) enrolled).`,
+            type: 'success',
+            icon: 'verified_user',
+            duration: 6000
+          });
+
+          // Mark student card present immediately in the draft
+          const card = document.querySelector(`.student-item[data-student-id="${studentId}"]`);
+          if (card) {
+            const cb = card.querySelector('input[type="checkbox"]');
+            if (cb && !cb.checked) {
+              cb.checked = true;
+              toggleStudentCard(cb);
+            }
+          }
+
+          // Reload backend data in background
+          loadBackendData();
+        } else {
+          alert('Could not link face biometrics: ' + (data.error || res.statusText));
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<span class="material-symbols-outlined text-[12px]">add_task</span> Link Face &amp; Mark Present';
+          }
+        }
+      } catch (e) {
+        alert('Network or server error while linking face: ' + e.message);
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span class="material-symbols-outlined text-[12px]">add_task</span> Link Face &amp; Mark Present';
+        }
       }
     }
 

@@ -10,8 +10,8 @@ import numpy as np
 import face_recognition
 
 # Configurable matching threshold (dlib face_recognition distance threshold)
-# 0.72 is optimal for real-world mobile selfie cameras, varying lighting, and multi-angle recognition
-MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.72"))
+# 0.75 is optimal for real-world mobile selfie cameras, room lighting, and multi-angle recognition
+MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.75"))
 
 
 import io
@@ -338,17 +338,26 @@ def euclidean_distance(emb1, emb2):
 def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRESHOLD):
     """
     Compares query_embedding against enrolled class students using face_recognition distance.
-    Returns (best_student_user, best_distance, confidence_score) or (None, actual_closest_distance, 0.0)
+    Returns (best_student_user, best_distance, confidence_score, closest_student_user, candidate_scores)
     """
     if not query_embedding:
-        return None, 999.0, 0.0, None
+        return None, 999.0, 0.0, None, []
 
     best_student = None
     best_distance = float('inf')
+    candidate_scores = []
 
     for student in class_students:
         emb = student.face_embedding
+        st_name = f"{student.first_name} {student.last_name}".strip() or student.username
         if not emb:
+            candidate_scores.append({
+                'student_id': student.id,
+                'username': student.username,
+                'name': st_name,
+                'distance': 999.0,
+                'has_embedding': False
+            })
             continue
 
         try:
@@ -366,20 +375,31 @@ def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRE
             else:
                 dist = euclidean_distance(query_embedding, emb)
 
+            dist_rounded = round(float(dist), 4)
+            candidate_scores.append({
+                'student_id': student.id,
+                'username': student.username,
+                'name': st_name,
+                'distance': dist_rounded,
+                'has_embedding': True
+            })
+
             if dist < best_distance:
                 best_distance = dist
                 best_student = student
         except Exception as e:
             print(f"[AI] Distance error for {student.username}: {e}")
 
+    candidate_scores.sort(key=lambda c: c['distance'])
+
     if best_student and best_distance < threshold:
         confidence = round(float(1.0 - (best_distance / threshold)), 4)
         print(f"[AI MATCH] Recognized: {best_student.username} (dist: {best_distance:.4f}, conf: {confidence:.2f})")
-        return best_student, round(best_distance, 4), max(0.0, confidence), best_student
+        return best_student, round(best_distance, 4), max(0.0, confidence), best_student, candidate_scores
 
     closest_dist = round(best_distance, 4) if best_distance != float('inf') else 999.0
     print(f"[AI UNMATCHED] Closest face was {best_student.username if best_student else 'None'} at dist {closest_dist:.4f} (threshold: {threshold})")
-    return None, closest_dist, 0.0, best_student
+    return None, closest_dist, 0.0, best_student, candidate_scores
 
 
 def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_THRESHOLD, progress_callback=None):
@@ -429,7 +449,7 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
                 pass
 
         for bbox, embedding in face_data:
-            matched_student, dist, conf, closest_st = match_face_to_students(embedding, class_students, threshold=threshold)
+            matched_student, dist, conf, closest_st, candidate_scores = match_face_to_students(embedding, class_students, threshold=threshold)
 
             if matched_student:
                 present_student_ids.add(matched_student.id)
@@ -439,11 +459,14 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
                     'student_name': f"{matched_student.first_name} {matched_student.last_name}".strip() or matched_student.username,
                     'roll_number': matched_student.roll_number,
                     'distance': dist,
-                    'confidence': conf
+                    'confidence': conf,
+                    'candidate_scores': candidate_scores,
+                    'embedding': embedding
                 })
             else:
                 unmatched_faces_count += 1
                 closest_name = f"{closest_st.first_name} {closest_st.last_name}".strip() if closest_st else "None"
+                closest_id = closest_st.id if closest_st else None
                 match_details.append({
                     'photo_index': idx + 1,
                     'student_id': None,
@@ -451,7 +474,10 @@ def process_classroom_photos(photo_bytes_list, class_students, threshold=MATCH_T
                     'roll_number': None,
                     'distance': dist,
                     'closest_candidate': closest_name,
-                    'confidence': 0.0
+                    'closest_candidate_id': closest_id,
+                    'confidence': 0.0,
+                    'candidate_scores': candidate_scores,
+                    'embedding': embedding
                 })
 
     # Class-scoped student breakdown

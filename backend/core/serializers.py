@@ -25,7 +25,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name', 'role', 
             'department', 'roll_number', 'student_class', 'student_class_name', 
-            'has_registered_face', 'profile_picture', 'attendance_stats', 'password'
+            'has_registered_face', 'face_embedding', 'profile_picture', 'attendance_stats', 'password'
         ]
         extra_kwargs = {'password': {'write_only': True, 'required': False}}
 
