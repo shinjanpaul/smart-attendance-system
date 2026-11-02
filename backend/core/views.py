@@ -180,12 +180,11 @@ class UserViewSet(viewsets.ModelViewSet):
                 user.face_embedding = all_embs
 
         user.save()
-        if user.face_embedding:
-            try:
-                from .supabase_sync import push_embedding_to_supabase
-                push_embedding_to_supabase(user.username, user.face_embedding)
-            except Exception:
-                pass
+        try:
+            from .supabase_sync import push_user_to_supabase
+            push_user_to_supabase(user)
+        except Exception as e:
+            print(f"[Supabase Sync admin_create_user]: {e}")
         serializer = self.get_serializer(user)
         return Response({
             'message': f"Successfully created {role.lower()} '{user.username}'!",
@@ -267,12 +266,11 @@ class UserViewSet(viewsets.ModelViewSet):
                 user.face_embedding = all_embs
 
         user.save()
-        if user.face_embedding:
-            try:
-                from .supabase_sync import push_embedding_to_supabase
-                push_embedding_to_supabase(user.username, user.face_embedding)
-            except Exception:
-                pass
+        try:
+            from .supabase_sync import push_user_to_supabase
+            push_user_to_supabase(user)
+        except Exception as e:
+            print(f"[Supabase Sync admin_update_user]: {e}")
         serializer = self.get_serializer(user)
         return Response({
             'message': f"Successfully updated '{user.username}'!",
@@ -357,13 +355,15 @@ class UserViewSet(viewsets.ModelViewSet):
             student.face_embedding = existing
             student.save()
             try:
-                from .supabase_sync import push_embedding_to_supabase
-                push_embedding_to_supabase(student.username, student.face_embedding)
-            except Exception:
-                pass
+                from .supabase_sync import push_user_to_supabase
+                push_user_to_supabase(student)
+            except Exception as e:
+                print(f"[Supabase Sync register_face raw]: {e}")
             return Response({
                 'message': f"Successfully linked camera face vector to {student.username}!",
                 'student_id': student.id,
+                'face_embedding': student.face_embedding,
+                'user': self.get_serializer(student).data,
                 'angles_enrolled': len(existing)
             }, status=status.HTTP_200_OK)
 
@@ -400,14 +400,16 @@ class UserViewSet(viewsets.ModelViewSet):
         student.profile_picture = last_photo_file
         student.save()
         try:
-            from .supabase_sync import push_embedding_to_supabase
-            push_embedding_to_supabase(student.username, student.face_embedding)
-        except Exception:
-            pass
+            from .supabase_sync import push_user_to_supabase
+            push_user_to_supabase(student)
+        except Exception as e:
+            print(f"[Supabase Sync register_face photos]: {e}")
 
         return Response({
             'message': f'Face embedding successfully registered for {student.username} using {len(valid_embeddings)} photo(s)!',
             'student_id': student.id,
+            'face_embedding': student.face_embedding,
+            'user': self.get_serializer(student).data,
             'photos_processed': len(valid_embeddings),
             'angles_enrolled': len(all_embs)
         }, status=status.HTTP_200_OK)
