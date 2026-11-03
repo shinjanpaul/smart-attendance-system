@@ -3748,16 +3748,28 @@
           `;
           itemsList.appendChild(itemDiv);
 
-          reader.onload = (e) => {
+          const setThumb = (src) => {
             const img = document.getElementById(`thumb-${idx}`);
             const spin = document.getElementById(`spin-${idx}`);
             if (img) {
-              img.src = e.target.result;
+              img.src = src;
               img.classList.remove('hidden');
             }
             if (spin) spin.classList.add('hidden');
           };
-          reader.readAsDataURL(file);
+
+          if (window.URL && window.URL.createObjectURL) {
+            try {
+              const blobUrl = URL.createObjectURL(file);
+              setThumb(blobUrl);
+            } catch(e) {
+              reader.onload = (ev) => setThumb(ev.target.result);
+              reader.readAsDataURL(file);
+            }
+          } else {
+            reader.onload = (ev) => setThumb(ev.target.result);
+            reader.readAsDataURL(file);
+          }
         });
       }
     }

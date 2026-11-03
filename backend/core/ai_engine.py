@@ -15,9 +15,8 @@ try:
 except Exception:
     pass
 
-# Configurable matching threshold (dlib face_recognition distance threshold)
-# 0.85 is optimal for real-world mobile selfie cameras, room lighting, and multi-angle recognition
-MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.85"))
+# Configurable matching threshold (standard safe dlib distance threshold: 0.60 - 0.65)
+MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.65"))
 
 
 import io

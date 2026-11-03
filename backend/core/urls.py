@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, AttendanceLogViewSet, TaskViewSet,
     SubmissionViewSet, StudentClassViewSet, SubjectViewSet,
-    frontend_view
+    frontend_view, debug_engine
 )
 
 router = DefaultRouter()
@@ -15,6 +15,7 @@ router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'submissions', SubmissionViewSet, basename='submission')
 
 urlpatterns = [
+    path('debug/engine/', debug_engine, name='debug-engine'),
     path('app/', frontend_view, name='frontend-app'),
     path('portal/', frontend_view, name='frontend-portal'),
     path('', include(router.urls)),
