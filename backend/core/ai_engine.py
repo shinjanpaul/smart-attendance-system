@@ -74,8 +74,8 @@ def decode_image_with_exif(photo_bytes, max_dim=800):
         pil_img = Image.open(io.BytesIO(photo_bytes))
         try:
             pil_img = ImageOps.exif_transpose(pil_img)
-        except Exception:
-            pass
+        except Exception as e_rot:
+            print(f"[FACE-ERR] rotation extraction error: {repr(e_rot)}")
 
         if pil_img.mode != 'RGB':
             pil_img = pil_img.convert('RGB')
@@ -148,7 +148,9 @@ def generate_image_encodings(img_rgb):
                         max(0, int(s_left * inv_scale))
                     ))
         except Exception as e:
-            print(f"[AI] face_locations error: {e}")
+            import traceback
+            print(f"[FACE-ERR] face_locations error: {repr(e)}")
+            traceback.print_exc()
 
         # Haar cascade fallback with CLAHE contrast enhancement
         if len(locations) == 0:
@@ -208,20 +210,19 @@ def generate_image_encodings(img_rgb):
             bbox = (int(left), int(top), int(right - left), int(bottom - top))
             enc = None
             try:
-                encs = face_recognition.face_encodings(frame, known_face_locations=[loc], model="small")
+                encs = face_recognition.face_encodings(frame, known_face_locations=[loc])
                 if len(encs) > 0:
                     enc = encs[0].astype(np.float32).tolist()
-                else:
-                    encs = face_recognition.face_encodings(frame, known_face_locations=[loc], model="large")
-                    if len(encs) > 0:
-                        enc = encs[0].astype(np.float32).tolist()
-            except Exception:
+            except Exception as e_enc:
+                import traceback
+                print(f"[FACE-ERR] face_encodings standard failed: {repr(e_enc)}")
+                traceback.print_exc()
                 try:
-                    encs = face_recognition.face_encodings(frame, known_face_locations=[loc])
+                    encs = face_recognition.face_encodings(frame, known_face_locations=[loc], model="small")
                     if len(encs) > 0:
                         enc = encs[0].astype(np.float32).tolist()
-                except Exception:
-                    pass
+                except Exception as e_enc2:
+                    print(f"[FACE-ERR] face_encodings small failed: {repr(e_enc2)}")
 
             # Fallback to cropped patch embedding with full 68-point dlib context
             if not enc:
@@ -229,8 +230,10 @@ def generate_image_encodings(img_rgb):
                     crop = crop_and_preprocess_face(frame, bbox)
                     if crop is not None:
                         enc = generate_embedding(crop)
-                except Exception:
-                    pass
+                except Exception as e_crop:
+                    import traceback
+                    print(f"[FACE-ERR] crop embedding fallback failed: {repr(e_crop)}")
+                    traceback.print_exc()
 
             if enc and len(enc) == 128:
                 results.append((bbox, enc))
@@ -251,8 +254,8 @@ def generate_image_encodings(img_rgb):
             if len(rot_results) > 0:
                 print(f"[AI] Successfully detected {len(rot_results)} face(s) after camera rotation correction!")
                 return rot_results
-        except Exception:
-            pass
+        except Exception as e_rot:
+            print(f"[FACE-ERR] rotation extraction error: {repr(e_rot)}")
 
     return []
 
@@ -272,8 +275,8 @@ def detect_all_faces(img_rgb):
         try:
             clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
             gray = clahe.apply(gray)
-        except Exception:
-            pass
+        except Exception as e_rot:
+            print(f"[FACE-ERR] rotation extraction error: {repr(e_rot)}")
 
         all_bboxes = []
         for cascade_name in ('haarcascade_frontalface_default.xml', 'haarcascade_frontalface_alt2.xml', 'haarcascade_profileface.xml'):
@@ -350,9 +353,14 @@ def generate_embedding(face_rgb):
             face_rgb = ensure_8bit_rgb(face_rgb)
 
         try:
-            encodings = face_recognition.face_encodings(face_rgb, model="small")
-        except Exception:
             encodings = face_recognition.face_encodings(face_rgb)
+        except Exception as e_enc1:
+            print(f"[FACE-ERR] face_encodings direct failed in generate_embedding: {repr(e_enc1)}")
+            try:
+                encodings = face_recognition.face_encodings(face_rgb, model="small")
+            except Exception as e_enc2:
+                print(f"[FACE-ERR] face_encodings small failed in generate_embedding: {repr(e_enc2)}")
+                encodings = []
         if len(encodings) > 0:
             return encodings[0].astype(np.float32).tolist()
 
@@ -360,13 +368,16 @@ def generate_embedding(face_rgb):
         if h >= 20 and w >= 20:
             loc = [(0, w, h, 0)]
             try:
-                encodings = face_recognition.face_encodings(face_rgb, known_face_locations=loc, model="small")
-            except Exception:
                 encodings = face_recognition.face_encodings(face_rgb, known_face_locations=loc)
+            except Exception as e_loc:
+                print(f"[FACE-ERR] face_encodings known_locations failed in generate_embedding: {repr(e_loc)}")
+                encodings = []
             if len(encodings) > 0:
                 return encodings[0].astype(np.float32).tolist()
     except Exception as e:
-        print(f"[AI] generate_embedding error: {e}")
+        import traceback
+        print(f"[FACE-ERR] generate_embedding error: {repr(e)}")
+        traceback.print_exc()
 
     return []
 
@@ -380,13 +391,13 @@ def euclidean_distance(emb1, emb2):
     if isinstance(emb1, str):
         try:
             emb1 = json.loads(emb1)
-        except Exception:
-            pass
+        except Exception as e_rot:
+            print(f"[FACE-ERR] rotation extraction error: {repr(e_rot)}")
     if isinstance(emb2, str):
         try:
             emb2 = json.loads(emb2)
-        except Exception:
-            pass
+        except Exception as e_rot:
+            print(f"[FACE-ERR] rotation extraction error: {repr(e_rot)}")
 
     a = np.array(emb1, dtype=np.float32).reshape(-1)
     b = np.array(emb2, dtype=np.float32).reshape(-1)

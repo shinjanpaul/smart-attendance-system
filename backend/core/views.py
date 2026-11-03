@@ -545,12 +545,22 @@ class AttendanceLogViewSet(viewsets.ModelViewSet):
                     import time
                     time.sleep(0.3)
 
+            print(f"\n========================================================")
+            print(f"[AI SCAN START] Received {len(photos)} photo(s). Candidates: {len(match_candidates)}")
+            for idx, p in enumerate(photos):
+                print(f"  [AI SCAN FILE #{idx+1}] name={getattr(p, 'name', 'unnamed')}, size={getattr(p, 'size', 'unknown')} bytes")
+            print(f"========================================================")
+
             photo_bytes_list = [p.read() for p in photos]
             draft_result = process_classroom_photos(
                 photo_bytes_list,
                 match_candidates,
                 progress_callback=ws_progress_callback
             )
+            print(f"[AI SCAN RESULT] Photos={draft_result.get('total_photos_processed')}, Faces={draft_result.get('total_faces_detected')}, Present={draft_result.get('present_count')}, Absent={draft_result.get('absent_count')}")
+            for m in draft_result.get('match_details', []):
+                print(f"  [AI SCAN MATCH] Photo#{m.get('photo_index')}: {m.get('student_name')} (ID: {m.get('student_id')}), Dist: {m.get('distance')}, Closest: {m.get('closest_candidate')}")
+
 
             # Broadcast scan completion event
             if channel_layer:
@@ -789,22 +799,212 @@ def debug_engine(request):
             cross_dists[f"{u1}_vs_{u2}"] = round(d, 4)
     info["cross_distances"] = cross_dists
 
-    # 4. On-the-fly extraction test from Ayush.jpeg profile file (if present)
+    # 4. In-depth on-the-fly extraction test & trace for Ayush.jpeg
+    ayush_trace = {}
     try:
-        from .attendance_seeder import extract_face_embedding_from_file
-        fresh_ayush_vec = extract_face_embedding_from_file('profiles/Ayush.jpeg')
-        if fresh_ayush_vec:
-            info["ayush_file_extraction"] = "SUCCESS"
-            info["ayush_file_first3"] = [round(float(x), 4) for x in fresh_ayush_vec[:3]]
-            if "ayush_nyas" in student_vecs:
-                d = float(np.linalg.norm(student_vecs["ayush_nyas"] - np.array(fresh_ayush_vec, dtype=np.float32)))
-                info["ayush_stored_vs_file_distance"] = round(d, 4)
-                info["ayush_matches_self"] = (d < 0.1)
+        cand_paths = [
+            os.path.join(str(settings.MEDIA_ROOT), 'profiles', 'Ayush.jpeg'),
+            os.path.join(str(settings.MEDIA_ROOT), 'profiles', 'ayush.jpeg'),
+            os.path.join(str(settings.MEDIA_ROOT), 'Ayush.jpeg'),
+            os.path.join(str(settings.BASE_DIR), 'media', 'profiles', 'Ayush.jpeg'),
+            os.path.join('/app', 'media', 'profiles', 'Ayush.jpeg'),
+        ]
+        found_cand = None
+        for p in cand_paths:
+            if os.path.exists(p):
+                found_cand = p
+                break
+        ayush_trace["checked_paths"] = cand_paths
+        ayush_trace["found_cand_path"] = found_cand
+
+        if found_cand:
+            ayush_trace["file_size_bytes"] = os.path.getsize(found_cand)
+            with open(found_cand, 'rb') as f:
+                b = f.read()
+
+            from .ai_engine import decode_image_with_exif
+            img = decode_image_with_exif(b, max_dim=800)
+            ayush_trace["decoded_img_shape"] = list(img.shape) if img is not None else None
+            ayush_trace["decoded_img_dtype"] = str(img.dtype) if img is not None else None
+            ayush_trace["decoded_img_c_contiguous"] = bool(img.flags['C_CONTIGUOUS']) if img is not None else None
+
+            import face_recognition
+            locs0 = face_recognition.face_locations(img, number_of_times_to_upsample=0)
+            ayush_trace["dlib_locs_upsample_0"] = locs0
+            locs1 = face_recognition.face_locations(img, number_of_times_to_upsample=1)
+            ayush_trace["dlib_locs_upsample_1"] = locs1
+
+            target_locs = locs0 if locs0 else locs1
+            if target_locs:
+                encs = face_recognition.face_encodings(img, known_face_locations=target_locs)
+                ayush_trace["encodings_len"] = len(encs)
+                if encs:
+                    fresh_ayush_vec = encs[0].astype(np.float32).tolist()
+                    info["ayush_file_extraction"] = "SUCCESS"
+                    info["ayush_file_first3"] = [round(float(x), 4) for x in fresh_ayush_vec[:3]]
+                    if "ayush_nyas" in student_vecs:
+                        d = float(np.linalg.norm(student_vecs["ayush_nyas"] - np.array(fresh_ayush_vec, dtype=np.float32)))
+                        info["ayush_stored_vs_file_distance"] = round(d, 4)
+                        info["ayush_matches_self"] = (d < MATCH_THRESHOLD)
+            else:
+                info["ayush_file_extraction"] = "FAILED (no face detected by dlib)"
         else:
-            info["ayush_file_extraction"] = "FAILED (no face detected or file missing)"
-    except Exception as e_ext:
-        info["ayush_file_extraction_error"] = str(e_ext)
+            info["ayush_file_extraction"] = "FAILED (file not found on disk)"
+    except Exception as e_tr:
+        ayush_trace["trace_exception"] = str(e_tr)
+        import traceback
+        ayush_trace["traceback"] = traceback.format_exc()
+        info["ayush_file_extraction"] = f"EXCEPTION: {e_tr}"
+
+    info["ayush_trace"] = ayush_trace
 
     return JsonResponse(info, json_dumps_params={'indent': 2})
+
+
+import hashlib
+from PIL import Image, ImageOps
+
+try:
+    import resource
+    def rss_mb(): return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024
+except ImportError:  # Windows
+    def rss_mb(): return None
+
+def debug_face_trace(request):
+    """
+    Claude diagnostic: inspects exact file on disk, sha256 hash, PIL decode,
+    and face_locations at max_dim 1600 vs 800 with peak RSS memory usage.
+    """
+    from .models import CustomUser
+    u = CustomUser.objects.filter(username="ayush_nyas").first()
+    if not u:
+        return JsonResponse({"error": "User ayush_nyas not found in database"}, status=404)
+    out = {}
+    path = None
+    try:
+        try:
+            path = u.profile_picture.path
+        except Exception:
+            path = None
+        if not path or not os.path.exists(path):
+            candidates = [
+                os.path.join(str(settings.MEDIA_ROOT), 'profiles', 'Ayush.jpeg'),
+                os.path.join(str(settings.MEDIA_ROOT), 'profiles', 'ayush.jpeg'),
+                os.path.join(str(settings.BASE_DIR), 'media', 'profiles', 'Ayush.jpeg'),
+                os.path.join('/app', 'media', 'profiles', 'Ayush.jpeg'),
+            ]
+            for c in candidates:
+                if os.path.exists(c):
+                    path = c
+                    break
+        if not path or not os.path.exists(path):
+            out["load_error"] = "File not found on disk."
+            return JsonResponse(out)
+
+        raw = open(path, "rb").read()
+        out.update(path=path, size_bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest()[:16])
+        img = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
+        out["pil_size"] = img.size
+    except Exception as e:
+        out["load_error"] = repr(e)
+        return JsonResponse(out)
+
+    import face_recognition
+    for max_dim in (1600, 800):
+        try:
+            im = img.copy()
+            im.thumbnail((max_dim, max_dim))
+            arr = np.ascontiguousarray(np.array(im), dtype=np.uint8)
+            boxes1 = face_recognition.face_locations(arr, number_of_times_to_upsample=1)
+            boxes0 = face_recognition.face_locations(arr, number_of_times_to_upsample=0)
+            out[f"max{max_dim}"] = {
+                "shape": list(arr.shape),
+                "faces_upsample1": len(boxes1),
+                "faces_upsample0": len(boxes0),
+                "box": boxes1[0] if boxes1 else (boxes0[0] if boxes0 else None)
+            }
+        except Exception as e:
+            out[f"max{max_dim}"] = {"error": repr(e)}
+        out[f"max{max_dim}_peak_rss_mb"] = rss_mb()
+    return JsonResponse(out, json_dumps_params={'indent': 2})
+
+
+def re_enroll_students_view(request):
+    """
+    Re-extracts pure 128-D face embeddings from original on-disk profile photos
+    for all students, replacing collapsed/synthetic baseline embeddings.
+    """
+    from .models import CustomUser
+    import face_recognition
+    from PIL import Image, ImageOps
+
+    results = {}
+    students_config = [
+        ('shinjan_paul', ['profiles/ShinjanPaul.jpeg', 'ShinjanPaul.jpeg']),
+        ('ayush_nyas', ['profiles/Ayush.jpeg', 'Ayush.jpeg']),
+        ('biswajit_sinha', ['profiles/4.jpeg', '4.jpeg']),
+        ('Sourjya_Saha', ['profiles/Sourjya4_AoHEmsE.jpeg', 'Sourjya4_AoHEmsE.jpeg']),
+    ]
+
+    for uname, rel_candidates in students_config:
+        st = CustomUser.objects.filter(username__iexact=uname).first()
+        if not st:
+            continue
+
+        found_file = None
+        for rel in rel_candidates:
+            cand_paths = [
+                os.path.join(str(settings.MEDIA_ROOT), rel),
+                os.path.join(str(settings.MEDIA_ROOT), 'profiles', os.path.basename(rel)),
+                os.path.join(str(settings.BASE_DIR), 'media', rel),
+                os.path.join(str(settings.BASE_DIR), 'media', 'profiles', os.path.basename(rel)),
+                os.path.join('/app', 'media', rel),
+                os.path.join('/app', 'media', 'profiles', os.path.basename(rel)),
+            ]
+            for c in cand_paths:
+                if os.path.exists(c):
+                    found_file = c
+                    break
+            if found_file:
+                break
+
+        if not found_file:
+            results[uname] = "File not found on disk"
+            continue
+
+        try:
+            pil_img = ImageOps.exif_transpose(Image.open(found_file)).convert("RGB")
+            pil_img.thumbnail((800, 800))
+            arr = np.ascontiguousarray(np.array(pil_img), dtype=np.uint8)
+            locs = face_recognition.face_locations(arr, number_of_times_to_upsample=0)
+            if not locs:
+                locs = face_recognition.face_locations(arr, number_of_times_to_upsample=1)
+            if locs:
+                encs = face_recognition.face_encodings(arr, known_face_locations=locs)
+                if encs:
+                    clean_vec = encs[0].astype(np.float32).tolist()
+                    st.face_embedding = [clean_vec]
+                    st.save(update_fields=['face_embedding'])
+                    results[uname] = {
+                        "status": "SUCCESS",
+                        "first3": [round(float(x), 4) for x in clean_vec[:3]],
+                        "file": os.path.basename(found_file)
+                    }
+                else:
+                    results[uname] = "No encoding generated"
+            else:
+                results[uname] = "No face located in photo"
+        except Exception as e:
+            results[uname] = f"Error: {e}"
+
+    # Hammad has no profile picture: clear embedding so it doesn't falsely mirror Shinjan
+    st_hammad = CustomUser.objects.filter(username__iexact='hammad_akhter').first()
+    if st_hammad:
+        st_hammad.face_embedding = None
+        st_hammad.save(update_fields=['face_embedding'])
+        results['hammad_akhter'] = "Cleared collapsed embedding (no photo registered)"
+
+    return JsonResponse({"re_enrolled": results}, json_dumps_params={'indent': 2})
+
 
 

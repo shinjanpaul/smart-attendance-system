@@ -47,13 +47,27 @@ def extract_face_embedding_from_file(rel_path):
                 break
 
         if not full_path:
+            # Case-insensitive discovery for Linux file systems
+            for s_dir in [os.path.join(str(settings.MEDIA_ROOT), 'profiles'), os.path.join(str(settings.BASE_DIR), 'media', 'profiles'), '/app/media/profiles']:
+                if os.path.isdir(s_dir):
+                    try:
+                        for fn in os.listdir(s_dir):
+                            if fn.lower() == base_filename.lower():
+                                full_path = os.path.join(s_dir, fn)
+                                break
+                    except Exception:
+                        pass
+                if full_path:
+                    break
+
+        if not full_path:
             print(f"[AI] Photo file not found for: {rel_path} (checked {len(candidates)} candidate paths)")
             return None
 
         with open(full_path, 'rb') as f:
             photo_bytes = f.read()
 
-        img = decode_image_with_exif(photo_bytes, max_dim=1600)
+        img = decode_image_with_exif(photo_bytes, max_dim=800)
         if img is None:
             return None
 
