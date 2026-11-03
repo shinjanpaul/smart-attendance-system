@@ -400,12 +400,13 @@ def pull_embeddings_from_supabase():
                     emb = row.get('face_embedding')
                     if u and emb:
                         user = CustomUser.objects.filter(username__iexact=u).first()
-                        if user and not user.face_embedding:
-                            user.face_embedding = emb
-                            user._skip_supabase_sync = True
-                            user.save(update_fields=['face_embedding'])
-                            restored_count += 1
-                            print(f"[Supabase] Restored cloud biometrics for {u} into Django DB!")
+                        if user:
+                            if not user.face_embedding or (isinstance(emb, list) and len(emb) > 1):
+                                user.face_embedding = emb
+                                user._skip_supabase_sync = True
+                                user.save(update_fields=['face_embedding'])
+                                restored_count += 1
+                                print(f"[Supabase] Restored cloud biometrics for {u} into Django DB!")
                 return restored_count
     except Exception as e:
         print(f"[Supabase] pull_embeddings notice: {e}")

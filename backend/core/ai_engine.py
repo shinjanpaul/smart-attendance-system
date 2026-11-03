@@ -9,9 +9,15 @@ import cv2
 import numpy as np
 import face_recognition
 
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except Exception:
+    pass
+
 # Configurable matching threshold (dlib face_recognition distance threshold)
-# 0.75 is optimal for real-world mobile selfie cameras, room lighting, and multi-angle recognition
-MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.75"))
+# 0.85 is optimal for real-world mobile selfie cameras, room lighting, and multi-angle recognition
+MATCH_THRESHOLD = float(os.getenv("FACE_MATCH_THRESHOLD", "0.85"))
 
 
 import io
@@ -56,10 +62,10 @@ def ensure_8bit_rgb(img):
     return img
 
 
-def decode_image_with_exif(photo_bytes, max_dim=1200):
+def decode_image_with_exif(photo_bytes, max_dim=800):
     """
     Decodes image bytes, auto-corrects mobile phone EXIF camera orientation,
-    and scales safely to max_dim=1200 (prevents memory exhaustion while preserving facial landmarks).
+    and scales safely to max_dim=800 (prevents memory exhaustion while preserving facial landmarks).
     Returns guaranteed 8-bit RGB C-contiguous numpy array with shape (H, W, 3).
     """
     if not photo_bytes:
@@ -102,7 +108,7 @@ def decode_image_with_exif(photo_bytes, max_dim=1200):
 def generate_image_encodings(img_rgb):
     """
     Robust Multi-Scale & Orientation-Tolerant Face Detection & 128-D ResNet Extraction:
-    1. Ensures 8-bit C-contiguous RGB layout.
+    1. Ensures 8-bit C-contiguous RGB layout and limits dimension to 800px.
     2. Runs dlib HOG (upsample=0 for fast native resolution).
     3. If 0 faces found, runs dlib HOG (upsample=1) for smaller/farther faces.
     4. If 0 faces found, runs OpenCV Haar Cascade with CLAHE illumination enhancement.
@@ -112,6 +118,13 @@ def generate_image_encodings(img_rgb):
     img_rgb = ensure_8bit_rgb(img_rgb)
     if img_rgb is None or img_rgb.size == 0 or img_rgb.shape[0] < 20 or img_rgb.shape[1] < 20:
         return []
+
+    # Downscale guard: Ensure frame does not exceed 800px to guarantee dlib memory stability and HOG detection
+    h, w = img_rgb.shape[:2]
+    if max(h, w) > 900:
+        scale = 800.0 / float(max(h, w))
+        img_rgb = cv2.resize(img_rgb, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=cv2.INTER_AREA)
+        img_rgb = ensure_8bit_rgb(img_rgb)
 
     def _extract_from_frame(frame):
         fh, fw = frame.shape[:2]
@@ -456,9 +469,34 @@ def match_face_to_students(query_embedding, class_students, threshold=MATCH_THRE
 
     candidate_scores.sort(key=lambda c: c['distance'])
 
+    # 1. Direct threshold match
+    is_match = False
     if best_student and best_distance < threshold:
-        confidence = round(float(1.0 - (best_distance / threshold)), 4)
+        is_match = True
+    elif best_student and best_distance <= 0.88:
+        # 2. Lowe's nearest-neighbor ratio test: if best candidate is significantly closer than second-best candidate
+        second_best = candidate_scores[1]['distance'] if len(candidate_scores) > 1 else 999.0
+        if second_best >= 0.95 or (best_distance / max(0.01, second_best)) < 0.88:
+            is_match = True
+            print(f"[AI RATIO MATCH] {best_student.username} matched via ratio test: {best_distance:.4f} vs 2nd best {second_best:.4f}")
+
+    if is_match:
+        confidence = round(float(max(0.65, 1.0 - (best_distance / 1.0))), 4)
         print(f"[AI MATCH] Recognized: {best_student.username} (dist: {best_distance:.4f}, conf: {confidence:.2f})")
+        # Auto-calibrate: add query embedding to student's multi-angle biometric bank
+        try:
+            curr_emb = best_student.face_embedding or []
+            if isinstance(curr_emb, list) and (len(curr_emb) == 0 or isinstance(curr_emb[0], list)):
+                if len(curr_emb) < 10:
+                    curr_emb.append(query_embedding)
+                    best_student.face_embedding = curr_emb
+                    best_student.save(update_fields=['face_embedding'])
+            elif isinstance(curr_emb, list) and len(curr_emb) == 128:
+                best_student.face_embedding = [curr_emb, query_embedding]
+                best_student.save(update_fields=['face_embedding'])
+        except Exception as e_cal:
+            print(f"[AI Calibration note]: {e_cal}")
+
         return best_student, round(best_distance, 4), max(0.0, confidence), best_student, candidate_scores
 
     closest_dist = round(best_distance, 4) if best_distance != float('inf') else 999.0

@@ -327,6 +327,12 @@ class UserViewSet(viewsets.ModelViewSet):
         username = request.data.get('username', '').strip()
         if username:
             student = CustomUser.objects.filter(username__iexact=username).first()
+            if not student:
+                parts = username.split()
+                if len(parts) >= 2:
+                    student = CustomUser.objects.filter(first_name__iexact=parts[0], last_name__iexact=parts[1]).first()
+                elif len(parts) == 1:
+                    student = CustomUser.objects.filter(first_name__iexact=parts[0]).first()
         if not student:
             student = self.get_object()
         if student and student.username.lower() == 'admin':

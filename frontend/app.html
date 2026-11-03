@@ -850,17 +850,20 @@
     </div>
 
     <!-- Recovered Draft Notification Banner -->
-    <div id="draft-recovered-banner" class="hidden p-3 rounded-2xl bg-primary-fixed/30 border border-primary/20 text-on-surface flex items-center justify-between text-xs animate-fadeIn">
+    <div id="draft-recovered-banner" class="hidden p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-on-surface flex items-center justify-between text-xs animate-fadeIn">
       <div class="flex items-center gap-2">
-        <span class="material-symbols-outlined text-primary text-[20px]">restore</span>
+        <span class="material-symbols-outlined text-amber-600 text-[22px]">history_toggle_off</span>
         <div>
-          <div class="font-bold text-primary">Restored Draft from Local Buffer</div>
-          <div class="text-[10px] text-secondary">Recovered unconfirmed attendance review from device IndexedDB.</div>
+          <div class="font-bold text-amber-900 dark:text-amber-200">Restored Draft from Local Buffer</div>
+          <div class="text-[10px] text-amber-700 dark:text-amber-300">Recovered unconfirmed attendance review from device IndexedDB.</div>
         </div>
       </div>
-      <button onclick="discardRecoveredDraft()" class="px-2.5 py-1 rounded-xl bg-surface-container hover:bg-error-container hover:text-error text-[10px] font-semibold transition-all">
-        Discard
-      </button>
+      <div class="flex items-center gap-1.5 shrink-0">
+        <button onclick="discardRecoveredDraft()" class="px-2.5 py-1 rounded-xl bg-red-100 hover:bg-red-200 text-red-700 text-[10px] font-bold border border-red-300 transition-all flex items-center gap-0.5">
+          <span class="material-symbols-outlined text-[13px]">delete</span>
+          <span>Discard</span>
+        </button>
+      </div>
     </div>
 
     <!-- EMPTY STATE: Shown when no photos have been scanned yet -->
@@ -1674,17 +1677,6 @@
       state.attendanceDraft.present_count = presentList.length;
       state.attendanceDraft.absent_count = absentList.length;
       OfflineDB.saveActiveDraft(state.attendanceDraft);
-    }
-
-    async function discardRecoveredDraft() {
-      await OfflineDB.clearActiveDraft();
-      state.attendanceDraft = null;
-      const banner = document.getElementById('draft-recovered-banner');
-      if (banner) banner.classList.add('hidden');
-      const emptyState = document.getElementById('review-empty-state');
-      const contentState = document.getElementById('review-content-state');
-      if (emptyState) emptyState.classList.remove('hidden');
-      if (contentState) contentState.classList.add('hidden');
     }
 
     function generateDefaultAttendanceLogs(studentsList) {
@@ -2572,13 +2564,15 @@
           if (res.ok) {
             alert(data.message || 'Face biometrics enrolled successfully!');
             // Dual Cloud Sync to Supabase profiles table
-            if (window.sbClient && data.face_embedding) {
+            const faceEmb = data.face_embedding || (data.user && data.user.face_embedding);
+            if (window.sbClient && faceEmb) {
               const st = (state.students || []).find(s => s.id === studentId);
-              if (st && st.username) {
+              const uname = (data.user && data.user.username) || (st && st.username);
+              if (uname) {
                 window.sbClient.from('profiles').update({
-                  face_embedding: data.face_embedding,
+                  face_embedding: faceEmb,
                   has_registered_face: true
-                }).eq('username', st.username).then(() => {
+                }).eq('username', uname).then(() => {
                   console.log('⚡ Synced fresh face embedding to Supabase Cloud profiles!');
                 });
               }
@@ -3517,11 +3511,24 @@
         return;
       }
 
+      const maxDim = 800;
+      let w = video.videoWidth;
+      let h = video.videoHeight;
+      if (w > maxDim || h > maxDim) {
+        if (w > h) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+      }
+
       const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
+      canvas.width = w;
+      canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(video, 0, 0, w, h);
 
       // Shutter Flash Effect
       const flash = document.getElementById('webcam-flash-overlay');
@@ -3579,18 +3586,81 @@
       }
     }
 
-    function handleClassroomFiles(files) {
+    async function preprocessImageFile(file) {
+      return new Promise((resolve) => {
+        try {
+          if (!file) return resolve(file);
+          // Check MIME type or filename extension (handles Samsung file picker where file.type is empty string)
+          const isImg = (file.type && file.type.startsWith('image/')) ||
+                        /\.(jpe?g|png|webp|heic|heif|bmp)$/i.test(file.name || '') ||
+                        (file.size && file.size > 0 && !file.name?.includes('.'));
+          if (!isImg) {
+            return resolve(file);
+          }
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              try {
+                // Optimal 800px max dimension: guaranteed dlib HOG receptive field match
+                // and strictly stays within Render's 512MB RAM budget.
+                const maxDim = 800;
+                let w = img.width;
+                let h = img.height;
+                if (w > maxDim || h > maxDim) {
+                  if (w > h) {
+                    h = Math.round((h * maxDim) / w);
+                    w = maxDim;
+                  } else {
+                    w = Math.round((w * maxDim) / h);
+                    h = maxDim;
+                  }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                canvas.toBlob((blob) => {
+                  if (blob) {
+                    const cleanName = (file.name || 'classroom_photo').replace(/\.[^/.]+$/, "") + ".jpg";
+                    const cleanFile = new File([blob], cleanName, {
+                      type: 'image/jpeg',
+                      lastModified: Date.now()
+                    });
+                    resolve(cleanFile);
+                  } else {
+                    resolve(file);
+                  }
+                }, 'image/jpeg', 0.88);
+              } catch(err) {
+                console.warn('Canvas resize notice:', err);
+                resolve(file);
+              }
+            };
+            img.onerror = () => resolve(file);
+            img.src = e.target.result;
+          };
+          reader.onerror = () => resolve(file);
+          reader.readAsDataURL(file);
+        } catch(e) {
+          resolve(file);
+        }
+      });
+    }
+
+    async function handleClassroomFiles(files) {
       if (!files || !files.length) return;
       if (!state.stagedFiles) state.stagedFiles = [];
 
-      const incoming = Array.from(files);
-      incoming.forEach(newFile => {
-        // Prevent exact duplicates
-        const exists = state.stagedFiles.some(f => f.name === newFile.name && f.size === newFile.size);
+      const rawList = Array.from(files);
+      for (const rawFile of rawList) {
+        const cleanFile = await preprocessImageFile(rawFile);
+        const exists = state.stagedFiles.some(f => f.name === cleanFile.name && f.size === cleanFile.size);
         if (!exists) {
-          state.stagedFiles.push(newFile);
+          state.stagedFiles.push(cleanFile);
         }
-      });
+      }
 
       renderStagedFiles();
 
@@ -3866,9 +3936,15 @@
       renderReviewScreen(draft);
     }
 
-    function renderReviewScreen(draft) {
+    function renderReviewScreen(draft, isRecovered = false) {
       state.attendanceDraft = draft;
       OfflineDB.saveActiveDraft(draft);
+
+      const banner = document.getElementById('draft-recovered-banner');
+      if (banner) {
+        if (isRecovered) banner.classList.remove('hidden');
+        else banner.classList.add('hidden');
+      }
 
       const emptyState = document.getElementById('review-empty-state');
       const contentState = document.getElementById('review-content-state');
@@ -3957,7 +4033,16 @@
         const match = draft.match_details ? draft.match_details.find(m => m.student_id === s.id) : null;
         let closestUnmatched = null;
         if (!s.is_present && draft.match_details) {
-          closestUnmatched = draft.match_details.find(m => !m.student_id && (m.closest_candidate_id === s.id || (m.closest_candidate && m.closest_candidate.toLowerCase().includes(s.username.toLowerCase()))));
+          closestUnmatched = draft.match_details.find(m => 
+            !m.student_id && (
+              m.closest_candidate_id === s.id ||
+              (m.closest_candidate && (
+                m.closest_candidate.toLowerCase() === (s.name || '').toLowerCase() ||
+                m.closest_candidate.toLowerCase().replace(/\s+/g, '_') === (s.username || '').toLowerCase() ||
+                (s.username && m.closest_candidate.toLowerCase().includes(s.username.toLowerCase()))
+              ))
+            )
+          );
         }
 
         const conf = match ? (match.confidence * 100).toFixed(1) + '%' : (s.is_present ? '92.4%' : '—');
@@ -4593,13 +4678,14 @@
       updateStudentFormPhotosPreview();
     }
 
-    function handleStudentFormPhotos(files) {
+    async function handleStudentFormPhotos(files) {
       if (!files || !files.length) return;
-      Array.from(files).forEach(f => {
-        if (f.type.startsWith('image/')) {
-          stagedStudentPhotos.push(f);
-        }
-      });
+      const countElem = document.getElementById('student-form-photos-count');
+      if (countElem) countElem.textContent = 'Optimizing photos...';
+      for (const rawFile of Array.from(files)) {
+        const cleanFile = await preprocessImageFile(rawFile);
+        stagedStudentPhotos.push(cleanFile);
+      }
       updateStudentFormPhotosPreview();
     }
 
@@ -4773,6 +4859,18 @@
             duration: 6000
           });
 
+          // Dual Cloud Sync to Supabase profiles table
+          if (window.sbClient && (data.face_embedding || (data.user && data.user.face_embedding))) {
+            const emb = data.face_embedding || data.user.face_embedding;
+            const uname = (data.user && data.user.username) || studentName;
+            window.sbClient.from('profiles').update({
+              face_embedding: emb,
+              has_registered_face: true
+            }).eq('username', uname).then(() => {
+              console.log('⚡ Synced linked face embedding to Supabase Cloud profiles!');
+            });
+          }
+
           // Mark student card present immediately in the draft
           const card = document.querySelector(`.student-item[data-student-id="${studentId}"]`);
           if (card) {
@@ -4881,6 +4979,23 @@
       }
     }
 
+    async function discardRecoveredDraft() {
+      await OfflineDB.clearActiveDraft();
+      state.attendanceDraft = null;
+      const banner = document.getElementById('draft-recovered-banner');
+      if (banner) banner.classList.add('hidden');
+      const emptyState = document.getElementById('review-empty-state');
+      const contentState = document.getElementById('review-content-state');
+      if (emptyState) emptyState.classList.remove('hidden');
+      if (contentState) contentState.classList.add('hidden');
+      showLiveToast({
+        title: 'Draft Cleared',
+        message: 'Previous review draft discarded. You can now start a fresh scan!',
+        type: 'info',
+        icon: 'delete_sweep'
+      });
+    }
+
     async function initApp() {
       // 0. Initialize IndexedDB Offline Buffer
       await OfflineDB.init();
@@ -4967,14 +5082,24 @@
         console.warn('Cloud snapshot fetch notice:', e);
       }
 
-      // 3. Recover active review draft if present
+      // 3. Recover active review draft only if it has valid recognized faces
       try {
         const savedDraft = await OfflineDB.getActiveDraft();
         if (savedDraft) {
-          state.attendanceDraft = savedDraft;
-          renderReviewScreen(savedDraft);
-          const banner = document.getElementById('draft-recovered-banner');
-          if (banner) banner.classList.remove('hidden');
+          if ((savedDraft.total_faces_detected || 0) > 0) {
+            state.attendanceDraft = savedDraft;
+            renderReviewScreen(savedDraft, true);
+          } else {
+            // Auto-clear stale 0-face drafts from previous failed attempts
+            await OfflineDB.clearActiveDraft();
+            state.attendanceDraft = null;
+            const banner = document.getElementById('draft-recovered-banner');
+            if (banner) banner.classList.add('hidden');
+            const emptyState = document.getElementById('review-empty-state');
+            const contentState = document.getElementById('review-content-state');
+            if (emptyState) emptyState.classList.remove('hidden');
+            if (contentState) contentState.classList.add('hidden');
+          }
         }
       } catch(e) {
         console.warn('Draft recovery notice:', e);

@@ -6,6 +6,7 @@ dj-database-url>=2.1.0
 whitenoise>=6.6.0
 opencv-python-headless>=4.9.0.80
 pillow>=10.2.0
+pillow-heif>=0.16.0
 numpy>=1.26.4
 python-dotenv>=1.0.1
 channels>=4.0.0
