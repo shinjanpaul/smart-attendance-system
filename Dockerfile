@@ -25,8 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Crucial: setuptools<82.0.0 is strictly required because face_recognition_models imports pkg_resources!
 RUN pip install --no-cache-dir "setuptools<82.0.0" wheel pip
 
-# Install numpy and Pillow (PIL) required by face_recognition api
-RUN pip install --no-cache-dir numpy==1.26.4 pillow>=10.2.0
+# Install numpy and Pillow (PIL) required by face_recognition api (strictly numpy<2.0.0 for dlib C-API compatibility)
+RUN pip install --no-cache-dir "numpy<2.0.0,>=1.26.4" pillow>=10.2.0
 
 # Compile dlib strictly with 1 thread
 RUN CMAKE_BUILD_PARALLEL_LEVEL=1 pip install --no-cache-dir dlib==19.24.4

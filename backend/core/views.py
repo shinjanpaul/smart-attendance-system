@@ -13,7 +13,7 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .ai_engine import (
     detect_all_faces, crop_and_preprocess_face, generate_embedding,
-    process_classroom_photos, decode_image_with_exif, MATCH_THRESHOLD
+    process_classroom_photos, decode_image_with_exif, ensure_8bit_rgb, MATCH_THRESHOLD
 )
 
 
@@ -716,6 +716,12 @@ def debug_engine(request):
 
     # 1. Check AI Libraries
     try:
+        import numpy as np
+        info["numpy_version"] = np.__version__
+    except Exception as e:
+        info["numpy_error"] = str(e)
+
+    try:
         import dlib
         info["dlib_version"] = dlib.__version__
     except Exception as e:
@@ -903,6 +909,7 @@ def debug_face_trace(request):
 
         raw = open(path, "rb").read()
         out.update(path=path, size_bytes=len(raw), sha256=hashlib.sha256(raw).hexdigest()[:16])
+        out["numpy_version"] = np.__version__
         img = ImageOps.exif_transpose(Image.open(path)).convert("RGB")
         out["pil_size"] = img.size
     except Exception as e:
@@ -915,6 +922,7 @@ def debug_face_trace(request):
             im = img.copy()
             im.thumbnail((max_dim, max_dim))
             arr = np.ascontiguousarray(np.array(im), dtype=np.uint8)
+            arr = ensure_8bit_rgb(arr)
             boxes1 = face_recognition.face_locations(arr, number_of_times_to_upsample=1)
             boxes0 = face_recognition.face_locations(arr, number_of_times_to_upsample=0)
             out[f"max{max_dim}"] = {
@@ -976,6 +984,7 @@ def re_enroll_students_view(request):
             pil_img = ImageOps.exif_transpose(Image.open(found_file)).convert("RGB")
             pil_img.thumbnail((800, 800))
             arr = np.ascontiguousarray(np.array(pil_img), dtype=np.uint8)
+            arr = ensure_8bit_rgb(arr)
             locs = face_recognition.face_locations(arr, number_of_times_to_upsample=0)
             if not locs:
                 locs = face_recognition.face_locations(arr, number_of_times_to_upsample=1)
